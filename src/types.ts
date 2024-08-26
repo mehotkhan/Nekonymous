@@ -12,6 +12,7 @@ export interface User {
 export interface Conversation {
   from: number;
   to: number;
+  reply_to_message_id: number;
 }
 
 /**
@@ -20,7 +21,7 @@ export interface Conversation {
  */
 export interface CurrentConversation {
   to: number;
-  parent_message: number;
+  reply_to_message_id?: number;
 }
 
 /**

@@ -9,6 +9,7 @@ import {
   PRIVACY_COMMAND_MESSAGE,
   SETTINGS_COMMAND_MESSAGE,
   StartConversationMessage,
+  UnsupportedMessageTypeMessage,
   USER_IS_BLOCKED_MESSAGE,
   USER_LINK_MESSAGE,
   WelcomeMessage,
@@ -92,7 +93,6 @@ export const handleStartCommand = async (
       // Establish conversation with the other user
       const conversation = {
         to: otherUser.userId,
-        parent_message: ctx.message?.message_id!,
       };
       await currentConversationModel.save(
         currentUserId.toString(),
@@ -103,9 +103,7 @@ export const handleStartCommand = async (
       );
     } else {
       // No user found with the provided UUID
-      await ctx.reply(
-        NoUserFoundMessage + JSON.stringify(otherUserUUID, otherUser)
-      );
+      await ctx.reply(NoUserFoundMessage);
     }
   } else {
     // Handle unexpected cases
@@ -200,48 +198,136 @@ export const handleMessage = async (
     currentUserId.toString()
   );
 
-  if (currentConversation) {
-    try {
-      const ticketId = generateTicketId();
-      const blockList =
-        (await userBlockListModel.get(currentConversation.to.toString())) || {};
-      const isBlocked = !!blockList[currentUserId];
-
-      if (ctx.message?.text) {
-        // Send the message to the intended recipient, wrapped in MarkdownV2 spoilers
-        await ctx.api.sendMessage(
-          currentConversation.to,
-          `||${escapeMarkdownV2(ctx.message?.text)}||`,
-          {
-            reply_markup: createReplyKeyboard(ticketId, isBlocked),
-            parse_mode: "MarkdownV2",
-          }
-        );
-      } else {
-        // Handle other media types similarly (e.g., photos, videos)
-        // Logic for handling media can be added here
-      }
-
-      await ctx.reply(MESSAGE_SENT_MESSAGE);
-      await currentConversationModel.delete(currentUserId.toString());
-
-      const conversationId = getConversationId(ticketId);
-      const conversationData = await encryptedPayload(
-        ticketId,
-        JSON.stringify({
-          from: currentUserId,
-          to: currentConversation.to,
-        })
-      );
-      await conversationModel.save(conversationId, conversationData);
-    } catch (error) {
-      await ctx.reply(HuhMessage + "\n" + JSON.stringify(error), {
-        reply_markup: mainMenu,
-      });
-    }
-  } else {
+  if (!currentConversation) {
     // If no conversation is active, respond with a generic error message
     await ctx.reply(HuhMessage, {
+      reply_markup: mainMenu,
+    });
+    return;
+  }
+
+  try {
+    const ticketId = generateTicketId();
+    const blockList =
+      (await userBlockListModel.get(currentConversation.to.toString())) || {};
+    const isBlocked = !!blockList[currentUserId];
+
+    const replyOptions: any = {
+      reply_markup: createReplyKeyboard(ticketId, isBlocked),
+    };
+
+    // Conditionally add the reply_to_message_id parameter if reply_to_message_id exists
+    if (currentConversation.reply_to_message_id) {
+      replyOptions.reply_to_message_id =
+        currentConversation.reply_to_message_id;
+    }
+
+    if (ctx.message?.text) {
+      // Handle text messages with MarkdownV2 spoilers
+      await ctx.api.sendMessage(
+        currentConversation.to,
+        `||${escapeMarkdownV2(ctx.message.text)}||`,
+        {
+          parse_mode: "MarkdownV2",
+          ...replyOptions,
+        }
+      );
+    } else if (ctx.message?.photo) {
+      // Handle photo messages with an optional caption
+      const photo = ctx.message.photo[ctx.message.photo.length - 1];
+      await ctx.api.sendPhoto(currentConversation.to, photo.file_id, {
+        ...replyOptions,
+        caption: ctx.message.caption
+          ? escapeMarkdownV2(ctx.message.caption)
+          : undefined,
+        parse_mode: "MarkdownV2",
+      });
+    } else if (ctx.message?.video) {
+      // Handle video messages with an optional caption
+      await ctx.api.sendVideo(
+        currentConversation.to,
+        ctx.message.video.file_id,
+        {
+          ...replyOptions,
+          caption: ctx.message.caption
+            ? escapeMarkdownV2(ctx.message.caption)
+            : undefined,
+          parse_mode: "MarkdownV2",
+        }
+      );
+    } else if (ctx.message?.animation) {
+      await ctx.api.sendAnimation(
+        currentConversation.to,
+        ctx.message.animation.file_id,
+        {
+          ...replyOptions,
+          caption: ctx.message.caption
+            ? escapeMarkdownV2(ctx.message.caption)
+            : undefined,
+          parse_mode: "MarkdownV2",
+        }
+      );
+    } else if (ctx.message?.document) {
+      // Handle file/document messages with an optional caption
+      await ctx.api.sendDocument(
+        currentConversation.to,
+        ctx.message.document.file_id,
+        {
+          ...replyOptions,
+          caption: ctx.message.caption
+            ? escapeMarkdownV2(ctx.message.caption)
+            : undefined,
+          parse_mode: "MarkdownV2",
+        }
+      );
+    } else if (ctx.message?.sticker) {
+      // Handle sticker messages
+      await ctx.api.sendSticker(
+        currentConversation.to,
+        ctx.message.sticker.file_id,
+        replyOptions
+      );
+    } else if (ctx.message?.voice) {
+      // Handle voice messages
+      await ctx.api.sendVoice(
+        currentConversation.to,
+        ctx.message.voice.file_id,
+        replyOptions
+      );
+    } else if (ctx.message?.video_note) {
+      // Handle video note messages
+      await ctx.api.sendVideoNote(
+        currentConversation.to,
+        ctx.message.video_note.file_id,
+        replyOptions
+      );
+    } else if (ctx.message?.audio) {
+      // Handle audio messages
+      await ctx.api.sendAudio(
+        currentConversation.to,
+        ctx.message.audio.file_id,
+        replyOptions
+      );
+    } else {
+      // If the message type is not recognized, respond with an error message or handle accordingly
+      await ctx.reply(UnsupportedMessageTypeMessage, replyOptions);
+    }
+
+    await ctx.reply(MESSAGE_SENT_MESSAGE);
+
+    const conversationId = getConversationId(ticketId);
+    const conversationData = await encryptedPayload(
+      ticketId,
+      JSON.stringify({
+        from: currentUserId,
+        to: currentConversation.to,
+        reply_to_message_id: ctx.message?.message_id,
+      })
+    );
+    await conversationModel.save(conversationId, conversationData);
+    await currentConversationModel.delete(currentUserId.toString());
+  } catch (error) {
+    await ctx.reply(HuhMessage + "\n" + JSON.stringify(error), {
       reply_markup: mainMenu,
     });
   }

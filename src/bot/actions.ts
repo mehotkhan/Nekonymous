@@ -70,7 +70,7 @@ export const handleReplyAction = async (
 
       const conversation = {
         to: parentConversation.from,
-        parent_message: ctx.update.callback_query?.message?.message_id!,
+        reply_to_message_id: parentConversation.reply_to_message_id,
       };
       await currentConversationModel.save(
         currentUserId.toString(),
