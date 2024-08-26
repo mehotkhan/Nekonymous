@@ -1,0 +1,13 @@
+name = "nekonymous"
+main = "src/index.ts"
+compatibility_date = "2024-08-19"
+
+workers_dev = true
+
+kv_namespaces = [
+    { binding = "anonymous_kv", id = "414fb07aae8b4b5d9fac86a0cad1720e" },
+]
+[placement]
+mode = "smart"
+
+[vars]
