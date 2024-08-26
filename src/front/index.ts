@@ -103,7 +103,7 @@ export const HomePageContent = async (env: Environment): Promise<string> => {
       </p>
       <div class="text-center">
         <a
-          href="https://t.me/anonymous_gap_bot?start"
+          href="https://t.me/nekonymous_bot?start"
           class="inline-block bg-blue-600 text-white text-xl font-semibold py-3 px-6 rounded-lg shadow-md hover:bg-blue-700 transition"
         >
           شروع به استفاده از ربات

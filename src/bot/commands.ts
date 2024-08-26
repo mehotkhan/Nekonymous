@@ -71,7 +71,7 @@ export const handleStartCommand = async (
     await ctx.reply(
       WelcomeMessage.replace(
         "UUID_USER_URL",
-        `https://t.me/anonymous_gap_bot?start=${currentUserUUID}`
+        `https://t.me/nekonymous_bot?start=${currentUserUUID}`
       ),
       {
         reply_markup: mainMenu,
@@ -136,7 +136,7 @@ export const handleMenuCommand = async (
       await ctx.reply(
         USER_LINK_MESSAGE.replace(
           "UUID_USER_URL",
-          `https://t.me/anonymous_gap_bot?start=${currentUserUUID}`
+          `https://t.me/nekonymous_bot?start=${currentUserUUID}`
         ),
         {
           reply_markup: mainMenu,
