@@ -53,7 +53,6 @@ router.post(
     try {
       // Validate the request method; it should be POST for webhooks
       if (request.method === "POST") {
-        
         // Extract the secret token from the headers
         const providedToken = request.headers.get(
           "X-Telegram-Bot-Api-Secret-Token"

@@ -1,13 +1,17 @@
 import { Bot } from "grammy";
+import { BlockList, CurrentConversation, Environment, User } from "../types";
+import { KVModel } from "../utils/kv-storage";
+import Logger from "../utils/logs"; // Import Logger class
 import {
   handleBlockAction,
   handleReplyAction,
   handleUnblockAction,
 } from "./actions";
-import { handleMessage, handleStartCommand, handleDeleteUserCommand } from "./commands";
-import { KVModel } from "../utils/kv-storage";
-import { BlockList, CurrentConversation, Environment, User } from "../types";
-import Logger from "../utils/logs"; // Import Logger class
+import {
+  handleDeleteUserCommand,
+  handleMessage,
+  handleStartCommand,
+} from "./commands";
 
 /**
  * Initializes and configures a new instance of the Telegram bot.

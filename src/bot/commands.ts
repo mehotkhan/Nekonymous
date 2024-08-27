@@ -134,28 +134,28 @@ export const handleMenuCommand = async (
   const currentUserUUID = await userIdToUUID.get(currentUserId.toString());
 
   switch (msgPayload) {
-    case "دریافت لینک":
-      await ctx.reply(
-        USER_LINK_MESSAGE.replace(
-          "UUID_USER_URL",
-          `https://t.me/nekonymous_bot?start=${currentUserUUID}`
-        ),
-        {
-          reply_markup: mainMenu,
-        }
-      );
-      break;
+  case "دریافت لینک":
+    await ctx.reply(
+      USER_LINK_MESSAGE.replace(
+        "UUID_USER_URL",
+        `https://t.me/nekonymous_bot?start=${currentUserUUID}`
+      ),
+      {
+        reply_markup: mainMenu,
+      }
+    );
+    break;
 
-    case "تنظیمات":
-      await ctx.reply(SETTINGS_COMMAND_MESSAGE);
-      break;
+  case "تنظیمات":
+    await ctx.reply(SETTINGS_COMMAND_MESSAGE);
+    break;
 
-    case "درباره و حریم خصوصی":
-      await ctx.reply(ABOUT_PRIVACY_COMMAND_MESSAGE);
-      break;
+  case "درباره و حریم خصوصی":
+    await ctx.reply(ABOUT_PRIVACY_COMMAND_MESSAGE);
+    break;
 
-    default:
-      return false; // Command not found in the menu
+  default:
+    return false; // Command not found in the menu
   }
 
   return true; // Command was handled

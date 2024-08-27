@@ -49,5 +49,14 @@ export interface Environment {
 export interface LogEntry {
   action: string;
   timestamp: string; // ISO formatted date string
-  details?: any;     // Any additional details to store with the log
+  details?: any; // Any additional details to store with the log
 }
+
+/**
+ * Handler
+ */
+export type Handler = (
+  request: Request,
+  env: Record<string, any>, // Updated to a more specific type
+  ctx: ExecutionContext
+) => Response | Promise<Response>;

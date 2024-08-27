@@ -1,6 +1,6 @@
 import { html } from "@worker-tools/html";
-import Logger from "../utils/logs"; // Assuming logs.ts is in the same directory
 import { Environment } from "../types";
+import Logger from "../utils/logs"; // Assuming logs.ts is in the same directory
 
 export const HomePageContent = async (env: Environment) => {
   const { r2_bucket } = env; // Assuming r2_bucket is the binding name for R2 in the environment

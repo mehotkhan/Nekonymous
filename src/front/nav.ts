@@ -1,7 +1,7 @@
 import { html } from "@worker-tools/html";
 
 // Function to generate navigation menu
-const navMenu = (title: String) => html`
+const navMenu = (title: string) => html`
   <nav
     class="bg-gray-200 p-4 rounded-md mb-4 flex justify-between items-center"
   >
