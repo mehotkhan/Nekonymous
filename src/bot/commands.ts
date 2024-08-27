@@ -15,6 +15,7 @@ import {
   USER_IS_BLOCKED_MESSAGE,
   USER_LINK_MESSAGE,
   WelcomeMessage,
+  SHUFFLE_MODE_COMMAND_MESSAGE,
 } from "../utils/messages";
 import {
   encryptedPayload,
@@ -26,11 +27,11 @@ import { createReplyKeyboard } from "./actions";
 
 // Main menu keyboard used across various commands
 const mainMenu = new Keyboard()
-  .text("تنظیمات")
+  .text("شافل مود:)")
   .text("دریافت لینک")
   .row()
-  .text("درباره")
   .text("درباره و حریم خصوصی")
+  .text("تنظیمات")
   .resized();
 
 /**
@@ -150,11 +151,21 @@ export const handleMenuCommand = async (
     break;
 
   case "تنظیمات":
-    await ctx.reply(SETTINGS_COMMAND_MESSAGE);
+    await ctx.reply(SETTINGS_COMMAND_MESSAGE, {
+      reply_markup: mainMenu,
+    });
+    break;
+  case "شافل مود:)":
+    await ctx.reply(SHUFFLE_MODE_COMMAND_MESSAGE, {
+      reply_markup: mainMenu,
+    });
     break;
 
   case "درباره و حریم خصوصی":
-    await ctx.reply(ABOUT_PRIVACY_COMMAND_MESSAGE);
+    await ctx.reply(ABOUT_PRIVACY_COMMAND_MESSAGE, {
+      reply_markup: mainMenu,
+      parse_mode: "MarkdownV2",
+    });
     break;
 
   default:
