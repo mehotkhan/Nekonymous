@@ -1,4 +1,5 @@
 import { schnorr } from "@noble/curves/secp256k1";
+import { sha256 } from "@noble/hashes/sha2"; // ECMAScript modules (ESM) and Common.js
 import { utf8ToBytes } from "@noble/hashes/utils";
 
 /**
@@ -24,10 +25,11 @@ const base64ToBytes = (base64: string): Uint8Array => {
 };
 
 /**
- * Combines the private key with the APP_SECURE_KEY to enhance security.
+ * Combines the private key with the APP_SECURE_KEY using a hash function.
+ * This method ensures that the resulting key is of a fixed, manageable length.
  * @param privateKey - The original private key.
  * @param appSecureKey - The application-specific secure key.
- * @returns A combined Uint8Array of the original private key and the secure key.
+ * @returns A hashed Uint8Array of the combined keys.
  */
 const combineWithAppSecureKey = (
   privateKey: Uint8Array,
@@ -39,7 +41,8 @@ const combineWithAppSecureKey = (
   combined.set(privateKey);
   combined.set(keyBytes, privateKey.length);
 
-  return combined;
+  // Use SHA-256 to hash the combined key, ensuring a fixed length
+  return sha256(combined);
 };
 
 /**

@@ -5,10 +5,10 @@ import { LogEntry } from "../types";
  * Logging system to track and store bot actions in Cloudflare R2.
  */
 class Logger {
-  private r2Bucket: R2Bucket;
+  private r2Bucket?: R2Bucket; // Make r2Bucket optional
   private logKeyPrefix: string = "logs/";
 
-  constructor(r2Bucket: R2Bucket) {
+  constructor(r2Bucket?: R2Bucket) {
     this.r2Bucket = r2Bucket;
   }
 
@@ -23,11 +23,17 @@ class Logger {
 
   /**
    * Saves a log entry to the R2 bucket.
+   * If the R2 bucket is not available, this method will exit without doing anything.
    * @param {string} action - The action name to log.
    * @param {any} [details] - Any additional details to store with the log.
    * @returns {Promise<void>} - A promise that resolves when the log is saved.
    */
   public async saveLog(action: string, details?: any): Promise<void> {
+    if (!this.r2Bucket) {
+      console.warn("R2 bucket is not defined. Log entry not saved.");
+      return;
+    }
+
     const logEntry: LogEntry = {
       action,
       timestamp: new Date().toISOString(),
@@ -40,10 +46,16 @@ class Logger {
 
   /**
    * Retrieves log entries from the R2 bucket.
+   * If the R2 bucket is not available, this method will return an empty array.
    * @param {string} [prefix] - An optional prefix to filter log entries (e.g., specific actions).
    * @returns {Promise<LogEntry[]>} - A promise that resolves to an array of log entries.
    */
   public async getLogs(prefix?: string): Promise<LogEntry[]> {
+    if (!this.r2Bucket) {
+      console.warn("R2 bucket is not defined. Returning an empty log list.");
+      return [];
+    }
+
     const logs: LogEntry[] = [];
     const options = prefix
       ? { prefix: `${this.logKeyPrefix}${prefix}` }
@@ -63,6 +75,7 @@ class Logger {
 
   /**
    * Generates a JSON array of logs filtered by a specific action and time range.
+   * If the R2 bucket is not available, this method will return an empty array.
    * @param {string} action - The action to filter logs by.
    * @param {Date} startDate - The start of the time range.
    * @param {Date} endDate - The end of the time range.
@@ -73,6 +86,11 @@ class Logger {
     startDate: Date,
     endDate: Date
   ): Promise<LogEntry[]> {
+    if (!this.r2Bucket) {
+      console.warn("R2 bucket is not defined. Returning an empty log list.");
+      return [];
+    }
+
     const allLogs = await this.getLogs(action);
     return allLogs.filter((log) => {
       const logDate = new Date(log.timestamp);
@@ -82,6 +100,7 @@ class Logger {
 
   /**
    * Example usage: Generates a JSON array of online users per week for graphing purposes.
+   * If the R2 bucket is not available, this method will return an empty array.
    * @param {Date} startDate - The start of the week.
    * @param {Date} endDate - The end of the week.
    * @returns {Promise<any[]>} - A promise that resolves to a JSON array of online user data.
@@ -90,6 +109,11 @@ class Logger {
     startDate: Date,
     endDate: Date
   ): Promise<any[]> {
+    if (!this.r2Bucket) {
+      console.warn("R2 bucket is not defined. Returning an empty report.");
+      return [];
+    }
+
     const logs = await this.getLogsByActionAndDateRange(
       "new_conversation",
       startDate,
@@ -103,7 +127,8 @@ class Logger {
   }
 
   /**
-   * Example usage: Generates a chart data for online users per week.
+   * Example usage: Generates chart data for online users per week.
+   * If the R2 bucket is not available, this method will return empty labels and data.
    * @param {Date} startDate - The start of the week.
    * @param {Date} endDate - The end of the week.
    * @returns {Promise<{ labels: string[], data: number[] }>} - A promise that resolves to an object with labels and data for graphing.
@@ -112,6 +137,11 @@ class Logger {
     startDate: Date,
     endDate: Date
   ): Promise<{ labels: string[]; data: number[] }> {
+    if (!this.r2Bucket) {
+      console.warn("R2 bucket is not defined. Returning empty chart data.");
+      return { labels: [], data: [] };
+    }
+
     const logs = await this.generateOnlineUsersReport(startDate, endDate);
 
     // Group by day and count online users

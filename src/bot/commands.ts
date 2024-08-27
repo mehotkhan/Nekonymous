@@ -65,7 +65,7 @@ export const handleStartCommand = async (
         userId: currentUserId,
         userName: ctx.from?.first_name!,
       });
-      await logger.saveLog("new_user_success", {});
+      // await logger.saveLog("new_user_success", {});
     }
 
     // Send welcome message with the user's unique bot link
@@ -103,10 +103,10 @@ export const handleStartCommand = async (
       await ctx.reply(
         StartConversationMessage.replace("USER_NAME", otherUser.userName)
       );
-      await logger.saveLog("new_conversation_success", {});
+      // await logger.saveLog("new_conversation_success", {});
     } else {
       // No user found with the provided UUID
-      await logger.saveLog("new_conversation_failed", {});
+      // await logger.saveLog("new_conversation_failed", {});
       await ctx.reply(NoUserFoundMessage);
     }
   } else {
@@ -114,7 +114,7 @@ export const handleStartCommand = async (
     await ctx.reply(HuhMessage, {
       reply_markup: mainMenu,
     });
-    await logger.saveLog("start_command_unknown", {});
+    // await logger.saveLog("start_command_unknown", {});
   }
 };
 
@@ -205,7 +205,7 @@ export const handleMessage = async (
     await ctx.reply(HuhMessage, {
       reply_markup: mainMenu,
     });
-    await logger.saveLog("current_conversation_faild", {});
+    // await logger.saveLog("current_conversation_failed", {});
 
     return;
   }
@@ -318,7 +318,7 @@ export const handleMessage = async (
     }
 
     await ctx.reply(MESSAGE_SENT_MESSAGE);
-    await logger.saveLog("new_conversation_success", {});
+    // await logger.saveLog("new_conversation_success", {});
 
     const conversationId = getConversationId(ticketId, APP_SECURE_KEY);
     const conversationData = await encryptedPayload(
@@ -333,10 +333,10 @@ export const handleMessage = async (
     await conversationModel.save(conversationId, conversationData);
     await currentConversationModel.delete(currentUserId.toString());
   } catch (error) {
-    await ctx.reply(HuhMessage, {
+    await ctx.reply(HuhMessage + JSON.stringify(error), {
       reply_markup: mainMenu,
     });
-    await logger.saveLog("new_conversation_unknown", error);
+    // await logger.saveLog("new_conversation_unknown", error);
   }
 };
 
@@ -367,17 +367,17 @@ export const handleDeleteUserCommand = async (
       await userIdToUUID.delete(currentUserId.toString());
 
       // Log the delete user action
-      await logger.saveLog("delete_user_success", {});
+      // await logger.saveLog("delete_user_success", {});
 
       await ctx.reply(DELETE_USER_COMMAND_MESSAGE, {
         reply_markup: mainMenu,
       });
     } else {
-      await logger.saveLog("delete_user_faild", {});
+      // await logger.saveLog("delete_user_failed", {});
       await ctx.reply(NoUserFoundMessage);
     }
   } catch (error) {
     await ctx.reply(JSON.stringify(error));
-    await logger.saveLog("delete_user_unknown", error);
+    // await logger.saveLog("delete_user_unknown", error);
   }
 };

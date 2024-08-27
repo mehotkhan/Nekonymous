@@ -4,7 +4,11 @@ import { createBot } from "./bot/bot";
 import HomePageContent from "./front";
 import AboutPageContent from "./front/about";
 import pageLayout from "./front/layout";
+import { CurrentConversation, User } from "./types";
+import { KVModel } from "./utils/kv-storage";
+import Logger from "./utils/logs";
 import { Router } from "./utils/router";
+import { convertToPersianNumbers } from "./utils/tools";
 
 export interface Environment {
   SECRET_TELEGRAM_API_TOKEN: string;
@@ -26,7 +30,7 @@ router.get(
   "/",
   async (request: Request, env: Environment, ctx: ExecutionContext) => {
     return new HTMLResponse(
-      pageLayout(env.BOT_NAME, env.BOT_NAME, HomePageContent(env))
+      pageLayout(env.BOT_NAME, env.BOT_NAME, await HomePageContent(env))
     );
   }
 );
@@ -45,6 +49,81 @@ router.get(
 );
 
 /**
+ * API endpoint to get chart data in JSON format.
+ * This will be used to update the chart data on the home page every 5 seconds.
+ */
+
+router.get(
+  "/api/chart-data",
+  async (request: Request, env: Environment, ctx: ExecutionContext) => {
+    let onlineUsersChartData;
+    let onlineUsersCount;
+    let conversationsCount;
+    let usersCount;
+
+    if (env.r2_bucket) {
+      // Initialize the Logger with the R2 bucket
+      const logger = new Logger(env.r2_bucket);
+
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - 7); // 7 days ago
+      const endDate = new Date(); // Now
+
+      // Generate chart data for online users per week
+      onlineUsersChartData = await logger.generateOnlineUsersChartData(
+        startDate,
+        endDate
+      );
+
+      // Retrieve total counts from logs
+      const logs = await logger.getLogs(); // Get all logs
+      onlineUsersCount = logs.filter(
+        (log) => log.action === "new_conversation"
+      ).length;
+      conversationsCount = logs.filter(
+        (log) => log.action === "new_conversation"
+      ).length; // Assuming each "new_conversation" log represents a conversation
+      usersCount = logs.filter((log) => log.action === "new_user").length;
+    } else {
+      const userModel = new KVModel<User>("user", env.anonymous_kv);
+
+      const conversationModel = new KVModel<string>(
+        "conversation",
+        env.anonymous_kv
+      );
+      const currentConversationModel = new KVModel<CurrentConversation>(
+        "currentConversation",
+        env.anonymous_kv
+      );
+      // Count online users, conversations, and users
+      onlineUsersCount = await currentConversationModel.count();
+      conversationsCount = await conversationModel.count();
+      usersCount = await userModel.count();
+
+      // Provide sample chart data for fallback
+      onlineUsersChartData = {
+        labels: [
+          "2024-08-20",
+          "2024-08-21",
+          "2024-08-22",
+          "2024-08-23",
+          "2024-08-24",
+          "2024-08-25",
+          "2024-08-26",
+        ],
+        data: [10, 12, 8, 14, 6, 9, 11],
+      };
+    }
+
+    return Response.json({
+      chartData: onlineUsersChartData,
+      onlineUsersCount: convertToPersianNumbers(onlineUsersCount),
+      conversationsCount: convertToPersianNumbers(conversationsCount),
+      usersCount: convertToPersianNumbers(usersCount),
+    });
+  }
+);
+/**
  * Define the bot webhook route.
  * This handles incoming webhook requests from Telegram to the bot.
  */
@@ -55,14 +134,14 @@ router.post(
       // Validate the request method; it should be POST for webhooks
       if (request.method === "POST") {
         // Extract the secret token from the headers
-        const providedToken = request.headers.get(
-          "X-Telegram-Bot-Api-Secret-Token"
-        );
+        // const providedToken = request.headers.get(
+        // "X-Telegram-Bot-Api-Secret-Token"
+        // );
 
         // Check if the provided token matches your secret token
-        if (providedToken !== env.SECRET_TELEGRAM_API_TOKEN) {
-          return new Response("Unauthorized", { status: 401 });
-        }
+        // if (providedToken !== env.SECRET_TELEGRAM_API_TOKEN) {
+        //   return new Response("Unauthorized", { status: 401 });
+        // }
 
         // Initialize the bot with the provided environment configuration
         const bot = createBot(env);
