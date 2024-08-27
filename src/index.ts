@@ -9,6 +9,7 @@ import { Router } from "./utils/router";
 export interface Environment {
   SECRET_TELEGRAM_API_TOKEN: string;
   anonymous_kv: KVNamespace;
+  r2_bucket: R2Bucket;
   BOT_INFO: string;
   BOT_NAME: string;
 }
@@ -52,6 +53,17 @@ router.post(
     try {
       // Validate the request method; it should be POST for webhooks
       if (request.method === "POST") {
+        
+        // Extract the secret token from the headers
+        const providedToken = request.headers.get(
+          "X-Telegram-Bot-Api-Secret-Token"
+        );
+
+        // Check if the provided token matches your secret token
+        if (providedToken !== env.SECRET_TELEGRAM_API_TOKEN) {
+          return new Response("Unauthorized", { status: 401 });
+        }
+
         // Initialize the bot with the provided environment configuration
         const bot = createBot(env);
 
