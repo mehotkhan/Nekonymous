@@ -1,12 +1,14 @@
 import { Context, Keyboard } from "grammy";
+import { WebUUID } from "web-uuid";
+import { BlockList, CurrentConversation, User } from "../types";
 import { KVModel } from "../utils/kv-storage";
+import Logger from "../utils/logs"; // Import Logger class
 import {
-  ABOUT_COMMAND_MESSAGE,
+  ABOUT_PRIVACY_COMMAND_MESSAGE,
   DELETE_USER_COMMAND_MESSAGE,
   HuhMessage,
   MESSAGE_SENT_MESSAGE,
   NoUserFoundMessage,
-  PRIVACY_COMMAND_MESSAGE,
   SETTINGS_COMMAND_MESSAGE,
   StartConversationMessage,
   UnsupportedMessageTypeMessage,
@@ -14,25 +16,21 @@ import {
   USER_LINK_MESSAGE,
   WelcomeMessage,
 } from "../utils/messages";
-import { WebUUID } from "web-uuid";
 import {
-  getConversationId,
   encryptedPayload,
   generateTicketId,
+  getConversationId,
 } from "../utils/ticket";
-import { BlockList, CurrentConversation, User } from "../types";
-import { createReplyKeyboard } from "./actions";
 import { escapeMarkdownV2 } from "../utils/tools";
-import Logger from "../utils/logs"; // Import Logger class
+import { createReplyKeyboard } from "./actions";
 
 // Main menu keyboard used across various commands
 const mainMenu = new Keyboard()
-  .text("درباره")
+  .text("تنظیمات")
   .text("دریافت لینک")
   .row()
-  .text("تنظیمات")
-  .text("حذف حساب")
-  .text("حریم خصوصی")
+  .text("درباره")
+  .text("درباره و حریم خصوصی")
   .resized();
 
 /**
@@ -152,16 +150,8 @@ export const handleMenuCommand = async (
       await ctx.reply(SETTINGS_COMMAND_MESSAGE);
       break;
 
-    case "درباره":
-      await ctx.reply(ABOUT_COMMAND_MESSAGE);
-      break;
-
-    case "حریم خصوصی":
-      await ctx.reply(PRIVACY_COMMAND_MESSAGE);
-      break;
-
-    case "حذف حساب":
-      await ctx.reply(DELETE_USER_COMMAND_MESSAGE);
+    case "درباره و حریم خصوصی":
+      await ctx.reply(ABOUT_PRIVACY_COMMAND_MESSAGE);
       break;
 
     default:
@@ -230,7 +220,7 @@ export const handleMessage = async (
       // Handle text messages with MarkdownV2 spoilers
       await ctx.api.sendMessage(
         currentConversation.to,
-        `||${escapeMarkdownV2(ctx.message.text)}||`,
+        escapeMarkdownV2(ctx.message.text),
         {
           parse_mode: "MarkdownV2",
           ...replyOptions,
@@ -334,5 +324,40 @@ export const handleMessage = async (
     await ctx.reply(HuhMessage + "\n" + JSON.stringify(error), {
       reply_markup: mainMenu,
     });
+  }
+};
+
+/**
+ * Handles the /deleteAccount command to remove a user's data from the bot's storage.
+ *
+ * This function deletes the user's record, UUID mapping, and any other associated data,
+ * effectively removing them from the bot's system.
+ *
+ * @param {Context} ctx - The context of the current Telegram update.
+ * @param {KVModel<User>} userModel - KVModel instance for managing user data.
+ * @param {KVModel<string>} userIdToUUID - KVModel instance for mapping user IDs to UUIDs.
+ * @param {Logger} logger - Logger instance for saving logs to R2.
+ */
+export const handleDeleteUserCommand = async (
+  ctx: Context,
+  userModel: KVModel<User>,
+  userIdToUUID: KVModel<string>,
+  logger: Logger
+): Promise<void> => {
+  const currentUserId = ctx.from?.id!;
+  const currentUserUUID = await userIdToUUID.get(currentUserId.toString());
+
+  if (currentUserUUID) {
+    await userModel.delete(currentUserUUID);
+    await userIdToUUID.delete(currentUserId.toString());
+
+    // Log the delete user action
+    await logger.saveLog("delete_user", {});
+
+    await ctx.reply(DELETE_USER_COMMAND_MESSAGE, {
+      reply_markup: mainMenu,
+    });
+  } else {
+    await ctx.reply(NoUserFoundMessage);
   }
 };

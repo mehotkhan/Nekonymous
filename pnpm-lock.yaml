@@ -23,9 +23,6 @@ importers:
       grammy:
         specifier: ^1.29.0
         version: 1.29.0
-      itty-router:
-        specifier: ^5.0.18
-        version: 5.0.18
       web-uuid:
         specifier: 0.1.0-pre.1
         version: 0.1.0-pre.1
@@ -398,9 +395,6 @@ packages:
   is-number@7.0.0:
     resolution: {integrity: sha512-41Cifkg6e8TylSpdtTpeLVMqvSBEVzTttHvERD741+pnZ8ANv0004MRL43QKPDlK9cGvNp6NZWZUBlbGXYxxng==}
     engines: {node: '>=0.12.0'}
-
-  itty-router@5.0.18:
-    resolution: {integrity: sha512-mK3ReOt4ARAGy0V0J7uHmArG2USN2x0zprZ+u+YgmeRjXTDbaowDy3kPcsmQY6tH+uHhDgpWit9Vqmv/4rTXwA==}
 
   magic-string@0.25.9:
     resolution: {integrity: sha512-RmF0AsMzgt25qzqqLc1+MbHmhdx0ojF2Fvs4XnOqz2ZOBXzzkEwc/dJQZCYHAn7v1jbVOjAZfK8msRn4BxO4VQ==}
@@ -873,8 +867,6 @@ snapshots:
       is-extglob: 2.1.1
 
   is-number@7.0.0: {}
-
-  itty-router@5.0.18: {}
 
   magic-string@0.25.9:
     dependencies:

@@ -1,4 +1,6 @@
 import { Context, InlineKeyboard } from "grammy";
+import { BlockList, Conversation, CurrentConversation } from "../types";
+import { KVModel } from "../utils/kv-storage";
 import {
   HuhMessage,
   NoConversationFoundMessage,
@@ -8,8 +10,6 @@ import {
   USER_UNBLOCKED_MESSAGE,
 } from "../utils/messages";
 import { decryptPayload, getConversationId } from "../utils/ticket";
-import { BlockList, Conversation, CurrentConversation } from "../types";
-import { KVModel } from "../utils/kv-storage";
 
 /**
  * Creates an inline keyboard with options to reply or block/unblock a user.
