@@ -38,6 +38,16 @@ export interface BlockList {
 export interface Environment {
   SECRET_TELEGRAM_API_TOKEN: string;
   anonymous_kv: KVNamespace;
+  r2_bucket: R2Bucket;
   BOT_INFO: string;
   BOT_NAME: string;
+}
+
+/**
+ * Log entry structure.
+ */
+export interface LogEntry {
+  action: string;
+  timestamp: string; // ISO formatted date string
+  details?: any;     // Any additional details to store with the log
 }

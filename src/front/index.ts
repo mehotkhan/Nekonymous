@@ -1,73 +1,47 @@
 import { html } from "@worker-tools/html";
-import { KVModel } from "../utils/kv-storage";
-import { CurrentConversation, Environment, User } from "../types";
-import { convertToPersianNumbers } from "../utils/tools";
+import Logger from "../utils/logs"; // Assuming logs.ts is in the same directory
+import { Environment } from "../types";
 
-interface StatsCache {
-  onlineUsersCount: number;
-  conversationsCount: number;
-  usersCount: number;
-}
+export const HomePageContent = async (env: Environment) => {
+  const { r2_bucket } = env; // Assuming r2_bucket is the binding name for R2 in the environment
 
-/**
- * Fetches or computes the current stats and caches them for 30 seconds.
- * If the cached stats are available, it returns them directly.
- * Otherwise, it computes the stats, stores them in KV with a 30-second TTL, and then returns them.
- *
- * @param {Environment} env - The environment variables and KV namespace bindings.
- * @returns {Promise<StatsCache>} - The stats for online users, conversations, and total users.
- */
-async function getStatsWithCache(env: Environment): Promise<StatsCache> {
-  const { anonymous_kv } = env;
-  const statsCacheKey = "statsCache";
-  const cacheTTL = 60;
+  // Initialize the Logger with the R2 bucket
+  const logger = new Logger(r2_bucket);
 
-  // Initialize the cache model
-  const statsCacheModel = new KVModel<StatsCache>("statsCache", anonymous_kv);
+  // Get online users data for the past week
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - 7); // 7 days ago
+  const endDate = new Date(); // Now
 
-  // Attempt to retrieve cached stats
-  let cachedStats = await statsCacheModel.get(statsCacheKey);
+  // Generate chart data for online users per week
+  const onlineUsersChartData = await logger.generateOnlineUsersChartData(
+    startDate,
+    endDate
+  );
 
-  // If cached stats are not available, compute and cache them
-  if (!cachedStats) {
-    const userModel = new KVModel<User>("user", anonymous_kv);
-    const conversationModel = new KVModel<string>("conversation", anonymous_kv);
-    const currentConversationModel = new KVModel<CurrentConversation>(
-      "currentConversation",
-      anonymous_kv
-    );
+  // Retrieve total counts from logs
+  const logs = await logger.getLogs(); // Get all logs
+  const onlineUsersCount = logs.filter(
+    (log) => log.action === "new_conversation"
+  ).length;
+  const conversationsCount = logs.filter(
+    (log) => log.action === "new_conversation"
+  ).length; // Assuming each "new_conversation" log represents a conversation
+  const usersCount = logs.filter((log) => log.action === "new_user").length;
 
-    // Compute the stats
-    const onlineUsersCount = await currentConversationModel.count();
-    const conversationsCount = await conversationModel.count();
-    const usersCount = await userModel.count();
-
-    // Store the computed stats in the cache with a 30-second expiration
-    cachedStats = {
-      onlineUsersCount,
-      conversationsCount,
-      usersCount,
-    };
-    await statsCacheModel.save(statsCacheKey, cachedStats, cacheTTL);
-  }
-
-  return cachedStats;
-}
-
-/**
- * Generates the content for the home page, displaying bot statistics such as online users, conversations, and total users.
- *
- * @param {Environment} env - The environment variables and KV namespace bindings.
- * @returns {Promise<string>} - The HTML content for the home page.
- */
-export const HomePageContent = async (env: Environment): Promise<string> => {
-  // Get the stats, either from cache or by computing them
-  const stats = await getStatsWithCache(env);
-
-  // Convert the stats to Persian numbers for display
-  const onlineUsersCount = convertToPersianNumbers(stats.onlineUsersCount);
-  const conversationsCount = convertToPersianNumbers(stats.conversationsCount);
-  const usersCount = convertToPersianNumbers(stats.usersCount);
+  // Prepare Chart.js data
+  const chartData = JSON.stringify({
+    labels: onlineUsersChartData.labels,
+    datasets: [
+      {
+        label: "Online Users (Past Week)",
+        data: onlineUsersChartData.data,
+        fill: false,
+        borderColor: "rgba(75, 192, 192, 1)",
+        tension: 0.1,
+      },
+    ],
+  });
 
   // Return the HTML content with dynamic data
   return html`
@@ -91,6 +65,8 @@ export const HomePageContent = async (env: Environment): Promise<string> => {
         </div>
       </div>
 
+      <canvas id="onlineUsersChart" class="mb-8"></canvas>
+
       <p class="text-lg leading-relaxed mb-4">
         نِکونیموس ما به شما این امکان را می‌دهد که به صورت ناشناس و امن با دیگر
         کاربران چت کنید. این ربات با استفاده از تکنولوژی‌های پیشرفته و رمزنگاری
@@ -103,12 +79,42 @@ export const HomePageContent = async (env: Environment): Promise<string> => {
       </p>
       <div class="text-center">
         <a
-          href="https://t.me/nekonymous_bot?start"
+          href="https://t.me/anonymous_gap_bot?start"
           class="inline-block bg-blue-600 text-white text-xl font-semibold py-3 px-6 rounded-lg shadow-md hover:bg-blue-700 transition"
         >
           شروع به استفاده از ربات
         </a>
       </div>
+
+      <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+      <script>
+        const ctx = document
+          .getElementById("onlineUsersChart")
+          .getContext("2d");
+        const chartData = ${chartData};
+        const myChart = new Chart(ctx, {
+          type: "line",
+          data: chartData,
+          options: {
+            responsive: true,
+            scales: {
+              x: {
+                title: {
+                  display: true,
+                  text: "Date",
+                },
+              },
+              y: {
+                title: {
+                  display: true,
+                  text: "Online Users",
+                },
+                beginAtZero: true,
+              },
+            },
+          },
+        });
+      </script>
     </div>
   `;
 };

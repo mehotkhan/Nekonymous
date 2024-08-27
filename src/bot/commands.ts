@@ -23,6 +23,7 @@ import {
 import { BlockList, CurrentConversation, User } from "../types";
 import { createReplyKeyboard } from "./actions";
 import { escapeMarkdownV2 } from "../utils/tools";
+import Logger from "../utils/logs"; // Import Logger class
 
 // Main menu keyboard used across various commands
 const mainMenu = new Keyboard()
@@ -51,7 +52,8 @@ export const handleStartCommand = async (
   userModel: KVModel<User>,
   userIdToUUID: KVModel<string>,
   userBlockListModel: KVModel<BlockList>,
-  currentConversationModel: KVModel<CurrentConversation>
+  currentConversationModel: KVModel<CurrentConversation>,
+  logger: Logger // Pass the Logger instance
 ): Promise<void> => {
   const currentUserId: number = ctx.from?.id!;
   let currentUserUUID = await userIdToUUID.get(currentUserId.toString());
@@ -77,6 +79,8 @@ export const handleStartCommand = async (
         reply_markup: mainMenu,
       }
     );
+    // Log the new user action
+    await logger.saveLog("new_user", {});
   } else if (typeof ctx.match === "string") {
     // User initiated bot with another user's UUID (e.g., from a shared link)
     const otherUserUUID = ctx.match;
