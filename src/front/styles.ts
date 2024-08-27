@@ -4,9 +4,20 @@ const style = html`
   <style>
     body {
       direction: rtl;
-      font-family: Vazirmatn, -apple-system, BlinkMacSystemFont, "Segoe UI",
-        "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans",
-        "Helvetica Neue", Arial, sans-serif;
+      font-family:
+        Vazirmatn,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        "Roboto",
+        "Oxygen",
+        "Ubuntu",
+        "Cantarell",
+        "Fira Sans",
+        "Droid Sans",
+        "Helvetica Neue",
+        Arial,
+        sans-serif;
       background-color: #f0f4f8;
     }
 

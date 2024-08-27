@@ -1,75 +1,8 @@
 import { html } from "@worker-tools/html";
-import { KVModel } from "../utils/kv-storage";
-import { CurrentConversation, Environment, User } from "../types";
-import { convertToPersianNumbers } from "../utils/tools";
+import { Environment } from "../types";
 
-interface StatsCache {
-  onlineUsersCount: number;
-  conversationsCount: number;
-  usersCount: number;
-}
-
-/**
- * Fetches or computes the current stats and caches them for 30 seconds.
- * If the cached stats are available, it returns them directly.
- * Otherwise, it computes the stats, stores them in KV with a 30-second TTL, and then returns them.
- *
- * @param {Environment} env - The environment variables and KV namespace bindings.
- * @returns {Promise<StatsCache>} - The stats for online users, conversations, and total users.
- */
-async function getStatsWithCache(env: Environment): Promise<StatsCache> {
-  const { anonymous_kv } = env;
-  const statsCacheKey = "statsCache";
-  const cacheTTL = 60;
-
-  // Initialize the cache model
-  const statsCacheModel = new KVModel<StatsCache>("statsCache", anonymous_kv);
-
-  // Attempt to retrieve cached stats
-  let cachedStats = await statsCacheModel.get(statsCacheKey);
-
-  // If cached stats are not available, compute and cache them
-  if (!cachedStats) {
-    const userModel = new KVModel<User>("user", anonymous_kv);
-    const conversationModel = new KVModel<string>("conversation", anonymous_kv);
-    const currentConversationModel = new KVModel<CurrentConversation>(
-      "currentConversation",
-      anonymous_kv
-    );
-
-    // Compute the stats
-    const onlineUsersCount = await currentConversationModel.count();
-    const conversationsCount = await conversationModel.count();
-    const usersCount = await userModel.count();
-
-    // Store the computed stats in the cache with a 30-second expiration
-    cachedStats = {
-      onlineUsersCount,
-      conversationsCount,
-      usersCount,
-    };
-    await statsCacheModel.save(statsCacheKey, cachedStats, cacheTTL);
-  }
-
-  return cachedStats;
-}
-
-/**
- * Generates the content for the home page, displaying bot statistics such as online users, conversations, and total users.
- *
- * @param {Environment} env - The environment variables and KV namespace bindings.
- * @returns {Promise<string>} - The HTML content for the home page.
- */
-export const HomePageContent = async (env: Environment): Promise<string> => {
-  // Get the stats, either from cache or by computing them
-  const stats = await getStatsWithCache(env);
-
-  // Convert the stats to Persian numbers for display
-  const onlineUsersCount = convertToPersianNumbers(stats.onlineUsersCount);
-  const conversationsCount = convertToPersianNumbers(stats.conversationsCount);
-  const usersCount = convertToPersianNumbers(stats.usersCount);
-
-  // Return the HTML content with dynamic data
+export const HomePageContent = async (env: Environment) => {
+  // Return the HTML content with dynamic data and auto-refreshing chart
   return html`
     <div class="max-w-4xl mx-auto p-6">
       <h1 class="text-3xl font-bold text-center mb-8">
@@ -79,15 +12,21 @@ export const HomePageContent = async (env: Environment): Promise<string> => {
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div class="bg-blue-100 p-6 rounded-lg shadow-lg text-center">
           <h2 class="text-xl font-bold text-blue-700 mb-2">کاربران آنلاین</h2>
-          <p class="text-lg text-blue-600">${onlineUsersCount} نفر</p>
+          <p id="onlineUsersCount" class="text-lg text-blue-600">
+            در حال بارگذاری...
+          </p>
         </div>
         <div class="bg-green-100 p-6 rounded-lg shadow-lg text-center">
           <h2 class="text-xl font-bold text-green-700 mb-2">تعداد مکالمات</h2>
-          <p class="text-lg text-green-600">${conversationsCount} مکالمه</p>
+          <p id="conversationsCount" class="text-lg text-green-600">
+            در حال بارگذاری...
+          </p>
         </div>
         <div class="bg-purple-100 p-6 rounded-lg shadow-lg text-center">
           <h2 class="text-xl font-bold text-purple-700 mb-2">کاربران فعال</h2>
-          <p class="text-lg text-purple-600">${usersCount} نفر</p>
+          <p id="usersCount" class="text-lg text-purple-600">
+            در حال بارگذاری...
+          </p>
         </div>
       </div>
 
@@ -101,14 +40,84 @@ export const HomePageContent = async (env: Environment): Promise<string> => {
         صورت خودکار یک لینک یکتا برای شما تولید می‌کند که می‌توانید آن را با
         دیگران به اشتراک بگذارید و مکالمات خود را آغاز کنید.
       </p>
-      <div class="text-center">
+      <div class="text-center mb-10 py-10 border-b">
         <a
-          href="https://t.me/nekonymous_bot?start"
+          href="https://t.me/anonymous_gap_bot?start"
           class="inline-block bg-blue-600 text-white text-xl font-semibold py-3 px-6 rounded-lg shadow-md hover:bg-blue-700 transition"
         >
           شروع به استفاده از ربات
         </a>
       </div>
+      <canvas id="onlineUsersChart" class="mb-8"></canvas>
+      <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+      <script>
+        const ctx = document
+          .getElementById("onlineUsersChart")
+          .getContext("2d");
+        let myChart;
+
+        async function fetchData() {
+          try {
+            const response = await fetch("/api/chart-data");
+            const data = await response.json();
+
+            document.getElementById("onlineUsersCount").textContent =
+              data.onlineUsersCount + " نفر";
+            document.getElementById("conversationsCount").textContent =
+              data.conversationsCount + " مکالمه";
+            document.getElementById("usersCount").textContent =
+              data.usersCount + " نفر";
+
+            const chartData = {
+              labels: data.chartData.labels,
+              datasets: [
+                {
+                  label: "کاربران آنلاین(هفت روز گذشته)",
+                  data: data.chartData.data,
+                  fill: false,
+                  borderColor: "rgba(75, 192, 192, 1)",
+                  tension: 0.1,
+                },
+              ],
+            };
+
+            if (!myChart) {
+              myChart = new Chart(ctx, {
+                type: "line",
+                data: chartData,
+                options: {
+                  responsive: true,
+                  scales: {
+                    x: {
+                      title: {
+                        display: true,
+                        text: "Date",
+                      },
+                    },
+                    y: {
+                      title: {
+                        display: true,
+                        text: "Online Users",
+                      },
+                      beginAtZero: true,
+                    },
+                  },
+                },
+              });
+            } else {
+              myChart.data.labels = chartData.labels;
+              myChart.data.datasets[0].data = chartData.datasets[0].data;
+              myChart.update();
+            }
+          } catch (error) {
+            console.error("Error fetching chart data:", error);
+          }
+        }
+
+        // Fetch initial data and set interval for periodic updates
+        fetchData();
+        setInterval(fetchData, 5000); // Update the chart and stats every 5 seconds
+      </script>
     </div>
   `;
 };

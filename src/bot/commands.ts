@@ -1,12 +1,14 @@
 import { Context, Keyboard } from "grammy";
+import { WebUUID } from "web-uuid";
+import { BlockList, CurrentConversation, User } from "../types";
 import { KVModel } from "../utils/kv-storage";
+import Logger from "../utils/logs"; // Import Logger class
 import {
-  ABOUT_COMMAND_MESSAGE,
+  ABOUT_PRIVACY_COMMAND_MESSAGE,
   DELETE_USER_COMMAND_MESSAGE,
   HuhMessage,
   MESSAGE_SENT_MESSAGE,
   NoUserFoundMessage,
-  PRIVACY_COMMAND_MESSAGE,
   SETTINGS_COMMAND_MESSAGE,
   StartConversationMessage,
   UnsupportedMessageTypeMessage,
@@ -14,24 +16,21 @@ import {
   USER_LINK_MESSAGE,
   WelcomeMessage,
 } from "../utils/messages";
-import { WebUUID } from "web-uuid";
 import {
-  getConversationId,
   encryptedPayload,
   generateTicketId,
+  getConversationId,
 } from "../utils/ticket";
-import { BlockList, CurrentConversation, User } from "../types";
-import { createReplyKeyboard } from "./actions";
 import { escapeMarkdownV2 } from "../utils/tools";
+import { createReplyKeyboard } from "./actions";
 
 // Main menu keyboard used across various commands
 const mainMenu = new Keyboard()
-  .text("درباره")
+  .text("تنظیمات")
   .text("دریافت لینک")
   .row()
-  .text("تنظیمات")
-  .text("حذف حساب")
-  .text("حریم خصوصی")
+  .text("درباره")
+  .text("درباره و حریم خصوصی")
   .resized();
 
 /**
@@ -51,7 +50,8 @@ export const handleStartCommand = async (
   userModel: KVModel<User>,
   userIdToUUID: KVModel<string>,
   userBlockListModel: KVModel<BlockList>,
-  currentConversationModel: KVModel<CurrentConversation>
+  currentConversationModel: KVModel<CurrentConversation>,
+  logger: Logger
 ): Promise<void> => {
   const currentUserId: number = ctx.from?.id!;
   let currentUserUUID = await userIdToUUID.get(currentUserId.toString());
@@ -65,6 +65,7 @@ export const handleStartCommand = async (
         userId: currentUserId,
         userName: ctx.from?.first_name!,
       });
+      // await logger.saveLog("new_user_success", {});
     }
 
     // Send welcome message with the user's unique bot link
@@ -77,6 +78,7 @@ export const handleStartCommand = async (
         reply_markup: mainMenu,
       }
     );
+    // Log the new user action
   } else if (typeof ctx.match === "string") {
     // User initiated bot with another user's UUID (e.g., from a shared link)
     const otherUserUUID = ctx.match;
@@ -101,8 +103,10 @@ export const handleStartCommand = async (
       await ctx.reply(
         StartConversationMessage.replace("USER_NAME", otherUser.userName)
       );
+      // await logger.saveLog("new_conversation_success", {});
     } else {
       // No user found with the provided UUID
+      // await logger.saveLog("new_conversation_failed", {});
       await ctx.reply(NoUserFoundMessage);
     }
   } else {
@@ -110,6 +114,7 @@ export const handleStartCommand = async (
     await ctx.reply(HuhMessage, {
       reply_markup: mainMenu,
     });
+    // await logger.saveLog("start_command_unknown", {});
   }
 };
 
@@ -132,36 +137,28 @@ export const handleMenuCommand = async (
   const currentUserUUID = await userIdToUUID.get(currentUserId.toString());
 
   switch (msgPayload) {
-    case "دریافت لینک":
-      await ctx.reply(
-        USER_LINK_MESSAGE.replace(
-          "UUID_USER_URL",
-          `https://t.me/nekonymous_bot?start=${currentUserUUID}`
-        ),
-        {
-          reply_markup: mainMenu,
-        }
-      );
-      break;
+  case "دریافت لینک":
+    await ctx.reply(
+      USER_LINK_MESSAGE.replace(
+        "UUID_USER_URL",
+        `https://t.me/nekonymous_bot?start=${currentUserUUID}`
+      ),
+      {
+        reply_markup: mainMenu,
+      }
+    );
+    break;
 
-    case "تنظیمات":
-      await ctx.reply(SETTINGS_COMMAND_MESSAGE);
-      break;
+  case "تنظیمات":
+    await ctx.reply(SETTINGS_COMMAND_MESSAGE);
+    break;
 
-    case "درباره":
-      await ctx.reply(ABOUT_COMMAND_MESSAGE);
-      break;
+  case "درباره و حریم خصوصی":
+    await ctx.reply(ABOUT_PRIVACY_COMMAND_MESSAGE);
+    break;
 
-    case "حریم خصوصی":
-      await ctx.reply(PRIVACY_COMMAND_MESSAGE);
-      break;
-
-    case "حذف حساب":
-      await ctx.reply(DELETE_USER_COMMAND_MESSAGE);
-      break;
-
-    default:
-      return false; // Command not found in the menu
+  default:
+    return false; // Command not found in the menu
   }
 
   return true; // Command was handled
@@ -178,13 +175,18 @@ export const handleMenuCommand = async (
  * @param {KVModel<BlockList>} userBlockListModel - KVModel instance for managing user block lists.
  * @param {KVModel<CurrentConversation>} currentConversationModel - KVModel instance for managing current conversations.
  * @param {KVModel<string>} conversationModel - KVModel instance for managing encrypted conversation data.
- */
+ * @param {Logger} logger - Logger instance for saving logs to R2.
+* @param {string} APP_SECURE_KEY - The application-specific secure key.
+ 
+*/
 export const handleMessage = async (
   ctx: Context,
   userIdToUUID: KVModel<string>,
   userBlockListModel: KVModel<BlockList>,
   currentConversationModel: KVModel<CurrentConversation>,
-  conversationModel: KVModel<string>
+  conversationModel: KVModel<string>,
+  logger: Logger,
+  APP_SECURE_KEY: string
 ): Promise<void> => {
   const currentUserId = ctx.from?.id!;
 
@@ -203,11 +205,13 @@ export const handleMessage = async (
     await ctx.reply(HuhMessage, {
       reply_markup: mainMenu,
     });
+    // await logger.saveLog("current_conversation_failed", {});
+
     return;
   }
 
   try {
-    const ticketId = generateTicketId();
+    const ticketId = generateTicketId(APP_SECURE_KEY);
     const blockList =
       (await userBlockListModel.get(currentConversation.to.toString())) || {};
     const isBlocked = !!blockList[currentUserId];
@@ -226,7 +230,7 @@ export const handleMessage = async (
       // Handle text messages with MarkdownV2 spoilers
       await ctx.api.sendMessage(
         currentConversation.to,
-        `||${escapeMarkdownV2(ctx.message.text)}||`,
+        escapeMarkdownV2(ctx.message.text),
         {
           parse_mode: "MarkdownV2",
           ...replyOptions,
@@ -314,21 +318,66 @@ export const handleMessage = async (
     }
 
     await ctx.reply(MESSAGE_SENT_MESSAGE);
+    // await logger.saveLog("new_conversation_success", {});
 
-    const conversationId = getConversationId(ticketId);
+    const conversationId = getConversationId(ticketId, APP_SECURE_KEY);
     const conversationData = await encryptedPayload(
       ticketId,
       JSON.stringify({
         from: currentUserId,
         to: currentConversation.to,
         reply_to_message_id: ctx.message?.message_id,
-      })
+      }),
+      APP_SECURE_KEY
     );
     await conversationModel.save(conversationId, conversationData);
     await currentConversationModel.delete(currentUserId.toString());
   } catch (error) {
-    await ctx.reply(HuhMessage + "\n" + JSON.stringify(error), {
+    await ctx.reply(HuhMessage + JSON.stringify(error), {
       reply_markup: mainMenu,
     });
+    // await logger.saveLog("new_conversation_unknown", error);
+  }
+};
+
+/**
+ * Handles the /deleteAccount command to remove a user's data from the bot's storage.
+ *
+ * This function deletes the user's record, UUID mapping, and any other associated data,
+ * effectively removing them from the bot's system.
+ *
+ * @param {Context} ctx - The context of the current Telegram update.
+ * @param {KVModel<User>} userModel - KVModel instance for managing user data.
+ * @param {KVModel<string>} userIdToUUID - KVModel instance for mapping user IDs to UUIDs.
+ * @param {Logger} logger - Logger instance for saving logs to R2.
+
+ */
+export const handleDeleteUserCommand = async (
+  ctx: Context,
+  userModel: KVModel<User>,
+  userIdToUUID: KVModel<string>,
+  logger: Logger
+): Promise<void> => {
+  const currentUserId = ctx.from?.id!;
+  const currentUserUUID = await userIdToUUID.get(currentUserId.toString());
+
+  try {
+    if (currentUserUUID) {
+      await userModel.delete(currentUserUUID);
+      await userIdToUUID.delete(currentUserId.toString());
+
+      // Log the delete user action
+      // await logger.saveLog("delete_user_success", {});
+
+      await ctx.reply(DELETE_USER_COMMAND_MESSAGE, {
+        reply_markup: mainMenu,
+      });
+    } else {
+      // await logger.saveLog("delete_user_failed", {});
+      await ctx.reply(NoUserFoundMessage);
+    }
+  } catch (error) {
+    await ctx.reply(JSON.stringify(error));
+    // await logger.saveLog("delete_user_unknown", error);
   }
 };

@@ -2,14 +2,28 @@
   "name": "anonymous-gap",
   "version": "0.0.0",
   "devDependencies": {
+    "@eslint/js": "^9.9.1",
     "@types/node": "^22.5.0",
+    "@typescript-eslint/eslint-plugin": "^8.3.0",
+    "@typescript-eslint/parser": "^8.3.0",
+    "eslint": "^9.9.1",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-import": "^2.29.1",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-prettier": "^5.2.1",
+    "eslint-plugin-promise": "^7.1.0",
+    "globals": "^15.9.0",
+    "prettier": "^3.3.3",
+    "typescript-eslint": "^8.3.0",
     "wrangler": "3.72.2"
   },
   "private": true,
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy --minify",
-    "clean:kv": "node tools/clear"
+    "clean:kv": "node tools/clear",
+    "lint": "eslint '**/*.{js,mjs,cjs,ts}'",
+    "lint:fix": "eslint '**/*.{js,mjs,cjs,ts}' --fix"
   },
   "dependencies": {
     "@cloudflare/workers-types": "^4.20240821.1",

@@ -1,4 +1,7 @@
 import { Context, InlineKeyboard } from "grammy";
+import { BlockList, Conversation, CurrentConversation } from "../types";
+import { KVModel } from "../utils/kv-storage";
+import Logger from "../utils/logs";
 import {
   HuhMessage,
   NoConversationFoundMessage,
@@ -8,8 +11,6 @@ import {
   USER_UNBLOCKED_MESSAGE,
 } from "../utils/messages";
 import { decryptPayload, getConversationId } from "../utils/ticket";
-import { BlockList, Conversation, CurrentConversation } from "../types";
-import { KVModel } from "../utils/kv-storage";
 
 /**
  * Creates an inline keyboard with options to reply or block/unblock a user.
@@ -42,19 +43,27 @@ export const createReplyKeyboard = (
  * @param {KVModel<CurrentConversation>} currentConversationModel - KVModel instance for managing current conversations.
  * @param {KVModel<BlockList>} userBlockListModel - KVModel instance for managing user block lists.
  * @param {KVModel<string>} conversationModel - KVModel instance for managing encrypted conversation data.
+ * @param {Logger} logger - Logger instance for saving logs to R2.
+ * @param {string} APP_SECURE_KEY - The application-specific secure key.
  */
 export const handleReplyAction = async (
   ctx: Context,
   currentConversationModel: KVModel<CurrentConversation>,
   userBlockListModel: KVModel<BlockList>,
-  conversationModel: KVModel<string>
+  conversationModel: KVModel<string>,
+  logger: Logger,
+  APP_SECURE_KEY: string
 ): Promise<void> => {
   const ticketId = ctx.match[1];
-  const conversationId = getConversationId(ticketId);
+  const conversationId = getConversationId(ticketId, APP_SECURE_KEY);
 
   const currentUserId = ctx.from?.id!;
   const conversationData = await conversationModel.get(conversationId);
-  const rawConversation = await decryptPayload(ticketId, conversationData!);
+  const rawConversation = await decryptPayload(
+    ticketId,
+    conversationData!,
+    APP_SECURE_KEY
+  );
   const parentConversation: Conversation = JSON.parse(rawConversation);
 
   try {
@@ -77,11 +86,14 @@ export const handleReplyAction = async (
         conversation
       );
       await ctx.reply(REPLAY_TO_MESSAGE);
+      // await logger.saveLog("new_replay_success", {});
     } else {
       await ctx.reply(NoConversationFoundMessage);
+      // await logger.saveLog("new_replay_failed", {});
     }
   } catch (error) {
     await ctx.reply(JSON.stringify(error));
+    // await logger.saveLog("new_replay_unknown", error);
   }
   await ctx.answerCallbackQuery();
 };
@@ -95,42 +107,54 @@ export const handleReplyAction = async (
  * @param {Context} ctx - The context of the current Telegram update.
  * @param {KVModel<BlockList>} userBlockListModel - KVModel instance for managing user block lists.
  * @param {KVModel<string>} conversationModel - KVModel instance for managing encrypted conversation data.
+ * @param {Logger} logger - Logger instance for saving logs to R2.
+ * @param {string} APP_SECURE_KEY - The application-specific secure key.
  */
 export const handleBlockAction = async (
   ctx: Context,
   userBlockListModel: KVModel<BlockList>,
-  conversationModel: KVModel<string>
+  conversationModel: KVModel<string>,
+  logger: Logger,
+  APP_SECURE_KEY: string
 ): Promise<void> => {
   const ticketId = ctx.match[1];
-  const conversationId = getConversationId(ticketId);
+  const conversationId = getConversationId(ticketId, APP_SECURE_KEY);
 
   const currentUserId = ctx.from?.id!;
   const conversationData = await conversationModel.get(conversationId);
-  const rawConversation = await decryptPayload(ticketId, conversationData!);
+  const rawConversation = await decryptPayload(
+    ticketId,
+    conversationData!,
+    APP_SECURE_KEY
+  );
   const parentConversation: Conversation = JSON.parse(rawConversation);
-
-  if (parentConversation) {
-    let blockList = await userBlockListModel.get(currentUserId.toString());
-    if (!blockList) {
-      blockList = {};
-    }
-
-    blockList[parentConversation.from?.toString()] = true;
-    await userBlockListModel.save(currentUserId.toString(), blockList);
-    await ctx.reply(USER_BLOCKED_MESSAGE);
-
-    const replyKeyboard = createReplyKeyboard(ticketId, true);
-    await ctx.api.editMessageReplyMarkup(
-      ctx.chat?.id!,
-      ctx.callbackQuery?.message?.message_id!,
-      {
-        reply_markup: replyKeyboard,
+  try {
+    if (parentConversation) {
+      let blockList = await userBlockListModel.get(currentUserId.toString());
+      if (!blockList) {
+        blockList = {};
       }
-    );
-  } else {
-    await ctx.reply(HuhMessage);
-  }
 
+      blockList[parentConversation.from?.toString()] = true;
+      await userBlockListModel.save(currentUserId.toString(), blockList);
+      await ctx.reply(USER_BLOCKED_MESSAGE);
+
+      const replyKeyboard = createReplyKeyboard(ticketId, true);
+      await ctx.api.editMessageReplyMarkup(
+        ctx.chat?.id!,
+        ctx.callbackQuery?.message?.message_id!,
+        {
+          reply_markup: replyKeyboard,
+        }
+      );
+      // await logger.saveLog("user_block_success", {});
+    } else {
+      await ctx.reply(HuhMessage);
+      // await logger.saveLog("user_block_failed", {});
+    }
+  } catch (error) {
+    // await logger.saveLog("user_block_unknown", error);
+  }
   await ctx.answerCallbackQuery();
 };
 
@@ -143,40 +167,54 @@ export const handleBlockAction = async (
  * @param {Context} ctx - The context of the current Telegram update.
  * @param {KVModel<BlockList>} userBlockListModel - KVModel instance for managing user block lists.
  * @param {KVModel<string>} conversationModel - KVModel instance for managing encrypted conversation data.
+ * @param {Logger} logger - Logger instance for saving logs to R2.
+ * @param {string} APP_SECURE_KEY - The application-specific secure key.
  */
 export const handleUnblockAction = async (
   ctx: Context,
   userBlockListModel: KVModel<BlockList>,
-  conversationModel: KVModel<string>
+  conversationModel: KVModel<string>,
+  logger: Logger,
+  APP_SECURE_KEY: string
 ): Promise<void> => {
   const ticketId = ctx.match[1];
-  const conversationId = getConversationId(ticketId);
+  const conversationId = getConversationId(ticketId, APP_SECURE_KEY);
 
   const currentUserId = ctx.from?.id!;
   const conversationData = await conversationModel.get(conversationId);
-  const rawConversation = await decryptPayload(ticketId, conversationData!);
+  const rawConversation = await decryptPayload(
+    ticketId,
+    conversationData!,
+    APP_SECURE_KEY
+  );
   const parentConversation: Conversation = JSON.parse(rawConversation);
+  try {
+    if (parentConversation) {
+      let blockList = await userBlockListModel.get(currentUserId.toString());
+      if (blockList && blockList[parentConversation.from.toString()]) {
+        delete blockList[parentConversation.from.toString()];
+        await userBlockListModel.save(currentUserId.toString(), blockList);
+        await ctx.reply(USER_UNBLOCKED_MESSAGE);
 
-  if (parentConversation) {
-    let blockList = await userBlockListModel.get(currentUserId.toString());
-    if (blockList && blockList[parentConversation.from.toString()]) {
-      delete blockList[parentConversation.from.toString()];
-      await userBlockListModel.save(currentUserId.toString(), blockList);
-      await ctx.reply(USER_UNBLOCKED_MESSAGE);
-
-      const replyKeyboard = createReplyKeyboard(ticketId, false);
-      await ctx.api.editMessageReplyMarkup(
-        ctx.chat?.id!,
-        ctx.callbackQuery?.message?.message_id!,
-        {
-          reply_markup: replyKeyboard,
-        }
-      );
+        const replyKeyboard = createReplyKeyboard(ticketId, false);
+        await ctx.api.editMessageReplyMarkup(
+          ctx.chat?.id!,
+          ctx.callbackQuery?.message?.message_id!,
+          {
+            reply_markup: replyKeyboard,
+          }
+        );
+        // await logger.saveLog("user_unblock_success", {});
+      } else {
+        await ctx.reply(HuhMessage);
+        // await logger.saveLog("user_unblock_failed1", {});
+      }
     } else {
       await ctx.reply(HuhMessage);
+      // await logger.saveLog("user_unblock_failed2", {});
     }
-  } else {
-    await ctx.reply(HuhMessage);
+  } catch (error) {
+    // await logger.saveLog("user_unblock_unknown", error);
   }
 
   await ctx.answerCallbackQuery();

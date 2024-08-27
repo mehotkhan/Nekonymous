@@ -2,22 +2,31 @@ const { exec } = require("child_process");
 const fs = require("fs");
 
 const NAMESPACE_ID = "414fb07aae8b4b5d9fac86a0cad1720e"; // replace with your namespace ID
+const CONVERSATION_PREFIX = "conversation:"; // Prefix for conversation keys
 
 // Step 1: List all keys
 exec(
-  `wrangler kv key list --namespace-id ${NAMESPACE_ID}`,
+  `wrangler kv:key list --namespace-id ${NAMESPACE_ID}`,
   (error, stdout) => {
     if (error) {
       console.error(`Error listing keys: ${error}`);
       return;
     }
 
-    const keys = JSON.parse(stdout).map((keyObj) => keyObj.name);
+    // Step 2: Filter keys that start with the conversation prefix
+    const keys = JSON.parse(stdout)
+      .map((keyObj) => keyObj.name)
+      .filter((key) => key.startsWith(CONVERSATION_PREFIX));
 
-    // Step 2: Write keys to a JSON file
+    if (keys.length === 0) {
+      console.log("No conversation keys found to delete.");
+      return;
+    }
+
+    // Step 3: Write filtered keys to a JSON file
     fs.writeFileSync("keys.json", JSON.stringify(keys), "utf8");
 
-    // Step 3: Delete keys in bulk
+    // Step 4: Delete filtered keys in bulk
     exec(
       `wrangler kv:bulk delete --namespace-id ${NAMESPACE_ID} keys.json`,
       (deleteError, deleteStdout) => {
@@ -26,7 +35,7 @@ exec(
           return;
         }
 
-        console.log(`Deleted keys: ${deleteStdout}`);
+        console.log(`Deleted conversation keys: ${deleteStdout}`);
         fs.unlinkSync("keys.json"); // Clean up the file
       }
     );
