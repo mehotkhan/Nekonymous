@@ -51,7 +51,7 @@ export const handleStartCommand = async (
   userIdToUUID: KVModel<string>,
   userBlockListModel: KVModel<BlockList>,
   currentConversationModel: KVModel<CurrentConversation>,
-  logger: Logger // Pass the Logger instance
+  logger: Logger
 ): Promise<void> => {
   const currentUserId: number = ctx.from?.id!;
   let currentUserUUID = await userIdToUUID.get(currentUserId.toString());
@@ -65,6 +65,7 @@ export const handleStartCommand = async (
         userId: currentUserId,
         userName: ctx.from?.first_name!,
       });
+      await logger.saveLog("new_user_success", {});
     }
 
     // Send welcome message with the user's unique bot link
@@ -78,7 +79,6 @@ export const handleStartCommand = async (
       }
     );
     // Log the new user action
-    await logger.saveLog("new_user", {});
   } else if (typeof ctx.match === "string") {
     // User initiated bot with another user's UUID (e.g., from a shared link)
     const otherUserUUID = ctx.match;
@@ -103,8 +103,10 @@ export const handleStartCommand = async (
       await ctx.reply(
         StartConversationMessage.replace("USER_NAME", otherUser.userName)
       );
+      await logger.saveLog("new_conversation_success", {});
     } else {
       // No user found with the provided UUID
+      await logger.saveLog("new_conversation_failed", {});
       await ctx.reply(NoUserFoundMessage);
     }
   } else {
@@ -112,6 +114,7 @@ export const handleStartCommand = async (
     await ctx.reply(HuhMessage, {
       reply_markup: mainMenu,
     });
+    await logger.saveLog("start_command_unknown", {});
   }
 };
 
@@ -172,13 +175,18 @@ export const handleMenuCommand = async (
  * @param {KVModel<BlockList>} userBlockListModel - KVModel instance for managing user block lists.
  * @param {KVModel<CurrentConversation>} currentConversationModel - KVModel instance for managing current conversations.
  * @param {KVModel<string>} conversationModel - KVModel instance for managing encrypted conversation data.
- */
+ * @param {Logger} logger - Logger instance for saving logs to R2.
+* @param {string} APP_SECURE_KEY - The application-specific secure key.
+ 
+*/
 export const handleMessage = async (
   ctx: Context,
   userIdToUUID: KVModel<string>,
   userBlockListModel: KVModel<BlockList>,
   currentConversationModel: KVModel<CurrentConversation>,
-  conversationModel: KVModel<string>
+  conversationModel: KVModel<string>,
+  logger: Logger,
+  APP_SECURE_KEY: string
 ): Promise<void> => {
   const currentUserId = ctx.from?.id!;
 
@@ -197,11 +205,13 @@ export const handleMessage = async (
     await ctx.reply(HuhMessage, {
       reply_markup: mainMenu,
     });
+    await logger.saveLog("current_conversation_faild", {});
+
     return;
   }
 
   try {
-    const ticketId = generateTicketId();
+    const ticketId = generateTicketId(APP_SECURE_KEY);
     const blockList =
       (await userBlockListModel.get(currentConversation.to.toString())) || {};
     const isBlocked = !!blockList[currentUserId];
@@ -308,22 +318,25 @@ export const handleMessage = async (
     }
 
     await ctx.reply(MESSAGE_SENT_MESSAGE);
+    await logger.saveLog("new_conversation_success", {});
 
-    const conversationId = getConversationId(ticketId);
+    const conversationId = getConversationId(ticketId, APP_SECURE_KEY);
     const conversationData = await encryptedPayload(
       ticketId,
       JSON.stringify({
         from: currentUserId,
         to: currentConversation.to,
         reply_to_message_id: ctx.message?.message_id,
-      })
+      }),
+      APP_SECURE_KEY
     );
     await conversationModel.save(conversationId, conversationData);
     await currentConversationModel.delete(currentUserId.toString());
   } catch (error) {
-    await ctx.reply(HuhMessage + "\n" + JSON.stringify(error), {
+    await ctx.reply(HuhMessage, {
       reply_markup: mainMenu,
     });
+    await logger.saveLog("new_conversation_unknown", error);
   }
 };
 
@@ -337,6 +350,7 @@ export const handleMessage = async (
  * @param {KVModel<User>} userModel - KVModel instance for managing user data.
  * @param {KVModel<string>} userIdToUUID - KVModel instance for mapping user IDs to UUIDs.
  * @param {Logger} logger - Logger instance for saving logs to R2.
+
  */
 export const handleDeleteUserCommand = async (
   ctx: Context,
@@ -347,17 +361,23 @@ export const handleDeleteUserCommand = async (
   const currentUserId = ctx.from?.id!;
   const currentUserUUID = await userIdToUUID.get(currentUserId.toString());
 
-  if (currentUserUUID) {
-    await userModel.delete(currentUserUUID);
-    await userIdToUUID.delete(currentUserId.toString());
+  try {
+    if (currentUserUUID) {
+      await userModel.delete(currentUserUUID);
+      await userIdToUUID.delete(currentUserId.toString());
 
-    // Log the delete user action
-    await logger.saveLog("delete_user", {});
+      // Log the delete user action
+      await logger.saveLog("delete_user_success", {});
 
-    await ctx.reply(DELETE_USER_COMMAND_MESSAGE, {
-      reply_markup: mainMenu,
-    });
-  } else {
-    await ctx.reply(NoUserFoundMessage);
+      await ctx.reply(DELETE_USER_COMMAND_MESSAGE, {
+        reply_markup: mainMenu,
+      });
+    } else {
+      await logger.saveLog("delete_user_faild", {});
+      await ctx.reply(NoUserFoundMessage);
+    }
+  } catch (error) {
+    await ctx.reply(JSON.stringify(error));
+    await logger.saveLog("delete_user_unknown", error);
   }
 };

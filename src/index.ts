@@ -12,6 +12,7 @@ export interface Environment {
   r2_bucket: R2Bucket;
   BOT_INFO: string;
   BOT_NAME: string;
+  APP_SECURE_KEY: string;
 }
 
 // Initialize a Router instance for handling different routes

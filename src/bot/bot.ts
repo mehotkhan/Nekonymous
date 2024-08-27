@@ -23,7 +23,13 @@ import {
  * @returns An instance of the Bot configured with commands and event handlers.
  */
 export const createBot = (env: Environment) => {
-  const { SECRET_TELEGRAM_API_TOKEN, anonymous_kv, BOT_INFO, r2_bucket } = env;
+  const {
+    SECRET_TELEGRAM_API_TOKEN,
+    anonymous_kv,
+    BOT_INFO,
+    r2_bucket,
+    APP_SECURE_KEY,
+  } = env;
 
   // Initialize the bot with the provided API SECRET_TELEGRAM_API_TOKEN and bot information
   const bot = new Bot(SECRET_TELEGRAM_API_TOKEN, {
@@ -57,7 +63,7 @@ export const createBot = (env: Environment) => {
       userIdToUUID,
       userBlockListModel,
       currentConversationModel,
-      logger // Pass the logger instance
+      logger
     )
   );
 
@@ -84,7 +90,9 @@ export const createBot = (env: Environment) => {
       userIdToUUID,
       userBlockListModel,
       currentConversationModel,
-      conversationModel
+      conversationModel,
+      logger,
+      APP_SECURE_KEY
     )
   );
 
@@ -100,7 +108,9 @@ export const createBot = (env: Environment) => {
       ctx,
       currentConversationModel,
       userBlockListModel,
-      conversationModel
+      conversationModel,
+      logger,
+      APP_SECURE_KEY
     )
   );
 
@@ -111,7 +121,13 @@ export const createBot = (env: Environment) => {
    * their block list, preventing further communication until the block is removed.
    */
   bot.callbackQuery(/^block_(.+)$/, (ctx) =>
-    handleBlockAction(ctx, userBlockListModel, conversationModel)
+    handleBlockAction(
+      ctx,
+      userBlockListModel,
+      conversationModel,
+      logger,
+      APP_SECURE_KEY
+    )
   );
 
   /**
@@ -121,7 +137,13 @@ export const createBot = (env: Environment) => {
    * resume with the unblocked user.
    */
   bot.callbackQuery(/^unblock_(.+)$/, (ctx) =>
-    handleUnblockAction(ctx, userBlockListModel, conversationModel)
+    handleUnblockAction(
+      ctx,
+      userBlockListModel,
+      conversationModel,
+      logger,
+      APP_SECURE_KEY
+    )
   );
 
   return bot;

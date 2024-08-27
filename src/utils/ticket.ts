@@ -3,7 +3,7 @@ import { utf8ToBytes } from "@noble/hashes/utils";
 
 /**
  * Converts a Uint8Array to a Base64 string.
- * @param bytes The bytes to convert.
+ * @param bytes - The bytes to convert.
  * @returns The Base64 string.
  */
 const bytesToBase64 = (bytes: Uint8Array): string => {
@@ -12,7 +12,7 @@ const bytesToBase64 = (bytes: Uint8Array): string => {
 
 /**
  * Converts a Base64 string to a Uint8Array.
- * @param base64 The Base64 string to convert.
+ * @param base64 - The Base64 string to convert.
  * @returns The resulting Uint8Array.
  */
 const base64ToBytes = (base64: string): Uint8Array => {
@@ -24,34 +24,62 @@ const base64ToBytes = (base64: string): Uint8Array => {
 };
 
 /**
- * Derives the public key from the ticket ID (private key).
- * This public key is used as a unique identifier for the conversation.
- * @param ticketId The ticket ID (private key) in Base64 format.
+ * Combines the private key with the APP_SECURE_KEY to enhance security.
+ * @param privateKey - The original private key.
+ * @param appSecureKey - The application-specific secure key.
+ * @returns A combined Uint8Array of the original private key and the secure key.
+ */
+const combineWithAppSecureKey = (
+  privateKey: Uint8Array,
+  appSecureKey: string
+): Uint8Array => {
+  const keyBytes = utf8ToBytes(appSecureKey);
+  const combined = new Uint8Array(privateKey.length + keyBytes.length);
+
+  combined.set(privateKey);
+  combined.set(keyBytes, privateKey.length);
+
+  return combined;
+};
+
+/**
+ * Derives the public key (conversation ID) from the ticket ID (private key).
+ * @param ticketId - The ticket ID (private key) in Base64 format.
+ * @param appSecureKey - The application-specific secure key.
  * @returns The derived public key as a Base64 string.
  */
-export const getConversationId = (ticketId: string): string => {
-  return bytesToBase64(schnorr.getPublicKey(base64ToBytes(ticketId)));
+export const getConversationId = (
+  ticketId: string,
+  appSecureKey: string
+): string => {
+  const combinedKey = combineWithAppSecureKey(
+    base64ToBytes(ticketId),
+    appSecureKey
+  );
+  return bytesToBase64(schnorr.getPublicKey(combinedKey));
 };
 
 /**
  * Generates a unique ticket ID (private key) for use in encryption.
- * The ticket ID is a random private key in Base64 format.
+ * The ticket ID is a random private key in Base64 format, combined with the APP_SECURE_KEY.
+ * @param appSecureKey - The application-specific secure key.
  * @returns The generated ticket ID as a Base64 string.
  */
-export const generateTicketId = (): string => {
-  const privateKey: Uint8Array = schnorr.utils.randomPrivateKey();
-  return bytesToBase64(privateKey);
+export const generateTicketId = (appSecureKey: string): string => {
+  const privateKey = schnorr.utils.randomPrivateKey();
+  const combinedKey = combineWithAppSecureKey(privateKey, appSecureKey);
+  return bytesToBase64(combinedKey);
 };
 
 /**
- * Derives an AES key from a private key for encryption and decryption.
- * @param privateKey The private key used to derive the AES key.
+ * Derives an AES key from a combined private key and APP_SECURE_KEY for encryption and decryption.
+ * @param combinedKey - The combined private key used to derive the AES key.
  * @returns A promise that resolves to a CryptoKey object for AES-GCM operations.
  */
-const deriveAESKey = async (privateKey: Uint8Array): Promise<CryptoKey> => {
+const deriveAESKey = async (combinedKey: Uint8Array): Promise<CryptoKey> => {
   return crypto.subtle.importKey(
     "raw",
-    privateKey.slice(0, 32), // Use the first 32 bytes of the private key
+    combinedKey.slice(0, 32),
     { name: "AES-GCM" },
     false,
     ["encrypt", "decrypt"]
@@ -59,18 +87,23 @@ const deriveAESKey = async (privateKey: Uint8Array): Promise<CryptoKey> => {
 };
 
 /**
- * Encrypts the conversation payload using the private key.
- * @param ticketId The ticket ID (private key) in Base64 format.
- * @param payload The conversation payload to encrypt.
+ * Encrypts the conversation payload using the combined key (private key + APP_SECURE_KEY).
+ * @param ticketId - The ticket ID (private key) in Base64 format.
+ * @param appSecureKey - The application-specific secure key.
+ * @param payload - The conversation payload to encrypt.
  * @returns A promise that resolves to the encrypted payload as a Base64 string.
  */
 export const encryptedPayload = async (
   ticketId: string,
-  payload: string
+  payload: string,
+  appSecureKey: string
 ): Promise<string> => {
-  const privateKey = base64ToBytes(ticketId);
-  const aesKey = await deriveAESKey(privateKey);
-  const iv = crypto.getRandomValues(new Uint8Array(12)); // Generate a random IV
+  const combinedKey = combineWithAppSecureKey(
+    base64ToBytes(ticketId),
+    appSecureKey
+  );
+  const aesKey = await deriveAESKey(combinedKey);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
   const data = utf8ToBytes(payload);
 
   const encryptedData = await crypto.subtle.encrypt(
@@ -83,21 +116,26 @@ export const encryptedPayload = async (
 };
 
 /**
- * Decrypts the conversation payload using the private key.
- * @param ticketId The ticket ID (private key) in Base64 format.
- * @param encryptedPayload The encrypted payload as a Base64 string.
+ * Decrypts the conversation payload using the combined key (private key + APP_SECURE_KEY).
+ * @param ticketId - The ticket ID (private key) in Base64 format.
+ * @param appSecureKey - The application-specific secure key.
+ * @param encryptedPayload - The encrypted payload as a Base64 string.
  * @returns A promise that resolves to the decrypted payload as a string.
  */
 export const decryptPayload = async (
   ticketId: string,
-  encryptedPayload: string
+  encryptedPayload: string,
+  appSecureKey: string
 ): Promise<string> => {
-  const privateKey = base64ToBytes(ticketId);
+  const combinedKey = combineWithAppSecureKey(
+    base64ToBytes(ticketId),
+    appSecureKey
+  );
   const [ivBase64, dataBase64] = encryptedPayload.split(":");
   const iv = base64ToBytes(ivBase64);
   const encryptedBytes = base64ToBytes(dataBase64);
 
-  const aesKey = await deriveAESKey(privateKey);
+  const aesKey = await deriveAESKey(combinedKey);
 
   const decryptedData = await crypto.subtle.decrypt(
     { name: "AES-GCM", iv },
@@ -105,6 +143,5 @@ export const decryptPayload = async (
     encryptedBytes
   );
 
-  // Use TextDecoder to convert the decrypted bytes back into a string
   return new TextDecoder().decode(decryptedData);
 };
