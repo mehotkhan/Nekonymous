@@ -40,7 +40,7 @@ export const HomePageContent = async (env: Environment) => {
         صورت خودکار یک لینک یکتا برای شما تولید می‌کند که می‌توانید آن را با
         دیگران به اشتراک بگذارید و مکالمات خود را آغاز کنید.
       </p>
-      <div class="text-center mb-10 py-10 border-b">
+      <div class="text-center mb-10 py-10">
         <a
           href="https://t.me/anonymous_gap_bot?start"
           class="inline-block bg-blue-600 text-white text-xl font-semibold py-3 px-6 rounded-lg shadow-md hover:bg-blue-700 transition"
@@ -48,7 +48,10 @@ export const HomePageContent = async (env: Environment) => {
           شروع به استفاده از ربات
         </a>
       </div>
-      <canvas id="onlineUsersChart" class="mb-8"></canvas>
+      <canvas
+        id="onlineUsersChart"
+        class="mb-8 border-t w-full hidden"
+      ></canvas>
       <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
       <script>
         const ctx = document
@@ -81,34 +84,34 @@ export const HomePageContent = async (env: Environment) => {
               ],
             };
 
-            if (!myChart) {
-              myChart = new Chart(ctx, {
-                type: "line",
-                data: chartData,
-                options: {
-                  responsive: true,
-                  scales: {
-                    x: {
-                      title: {
-                        display: true,
-                        text: "Date",
-                      },
-                    },
-                    y: {
-                      title: {
-                        display: true,
-                        text: "Online Users",
-                      },
-                      beginAtZero: true,
-                    },
-                  },
-                },
-              });
-            } else {
-              myChart.data.labels = chartData.labels;
-              myChart.data.datasets[0].data = chartData.datasets[0].data;
-              myChart.update();
-            }
+            // if (!myChart) {
+            //   myChart = new Chart(ctx, {
+            //     type: "line",
+            //     data: chartData,
+            //     options: {
+            //       responsive: true,
+            //       scales: {
+            //         x: {
+            //           title: {
+            //             display: true,
+            //             text: "Date",
+            //           },
+            //         },
+            //         y: {
+            //           title: {
+            //             display: true,
+            //             text: "Online Users",
+            //           },
+            //           beginAtZero: true,
+            //         },
+            //       },
+            //     },
+            //   });
+            // } else {
+            //   myChart.data.labels = chartData.labels;
+            //   myChart.data.datasets[0].data = chartData.datasets[0].data;
+            //   myChart.update();
+            // }
           } catch (error) {
             console.error("Error fetching chart data:", error);
           }
