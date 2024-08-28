@@ -1,144 +1,154 @@
-# Nekonymous
+Nekonymous
+==========
 
-Nekonymous is a secure, anonymous messaging bot for Telegram that allows users to communicate without revealing their identity. Built with privacy in mind, it uses modern encryption techniques to ensure that all messages are secure and private. The bot is deployed on Cloudflare Workers, which provides high performance and global distribution.
+Nekonymous is a secure and anonymous messaging bot for Telegram that allows users to communicate without revealing their identity. Designed with privacy at its core, the bot employs modern encryption techniques to ensure that all messages remain secure and private. The bot is deployed on Cloudflare Workers, offering high performance and global distribution.
 
-## How It Works
+How It Works
+------------
 
-1. **User Interaction**:
+### 1\. User Interaction
 
-   - Users start a conversation with the bot by sending the `/start` command.
-   - The bot generates a unique UUID for the user and provides a personalized link that can be shared with others.
-   - When someone uses this link, they can send anonymous messages to the original user without revealing their identity.
+-   **Starting a Conversation**: Users initiate interaction with the bot using the `/start` command.
+-   **Unique Links**: The bot generates a unique UUID for each user and provides a personalized link that can be shared with others.
+-   **Anonymous Messaging**: When someone uses this link, they can send anonymous messages to the original user without revealing their identity.
 
-2. **Message Flow**:
+### 2\. Message Flow
 
-   - Messages sent via the bot are encrypted and stored securely using Cloudflare Workers KV (Key-Value storage).
-   - The recipient is notified of new messages, which they can reply to anonymously.
-   - Replies are routed back to the sender, maintaining the anonymity of both parties.
+-   **Encryption**: Messages are encrypted and stored securely using Cloudflare Workers KV (Key-Value storage).
+-   **Notification**: The recipient is notified of new messages, which they can reply to anonymously.
+-   **Reply Handling**: Replies are routed back to the sender, maintaining the anonymity of both parties.
 
-3. **Blocking Users**:
+### 3\. Blocking Users
 
-   - Users can block or unblock senders using inline buttons provided in the conversation.
-   - This ensures that unwanted messages can be filtered out effectively.
+-   **User Control**: Users can block or unblock senders using inline buttons within the conversation, allowing them to filter unwanted messages effectively.
 
-4. **User Privacy**:
-   - The bot ensures that no identifying information is leaked. UUIDs are randomly generated and do not correlate with any real user data.
+### 4\. User Privacy
 
-# Bot's Security Overview
+-   **Anonymity**: The bot ensures no identifying information is leaked. UUIDs are randomly generated and do not correlate with any real user data.
 
-## Introduction
+Bot's Security Overview
+-----------------------
 
-The **Nekonymous** bot is designed with a strong emphasis on security and privacy. This overview provides a technical breakdown of the key security features that have been implemented to protect user data and ensure secure communication. The bot utilizes advanced cryptographic techniques to safeguard messages and user identities, leveraging the security capabilities of Cloudflare Workers and KV storage.
+### 1\. Ticketing System
 
-## Security Architecture
+The bot uses a robust ticketing system to manage message encryption and decryption. Each conversation is secured using a unique ticket ID functioning as a private key. This key is generated for each new conversation and is never stored in plain text.
 
-### 1\. **Ticketing System**
+-   **Ticket ID (Private Key)**: Generated using the `@noble/curves` library, the private key is central to the encryption process.
+-   **APP_SECURE_KEY**: Enhances security by combining the ticket ID with an APP_SECURE_KEY stored securely in Cloudflare environment variables.
+-   **Public Key (Conversation ID)**: Derived from the ticket ID and APP_SECURE_KEY, it serves as the conversation identifier.
 
-The bot uses a robust ticketing system to handle message encryption and decryption. Each conversation between users is secured using a unique ticket ID that functions as a private key. This key is generated for each new conversation and is never stored in plain text.
+### 2\. Encryption and Decryption Process
 
-#### Key Components:
+Messages sent through the bot are encrypted using AES-GCM encryption, ensuring that only the intended recipient can read the messages, even if intercepted by unauthorized parties.
 
-- **Ticket ID (Private Key)**: Generated using the @noble/curves library, this private key is the cornerstone of the encryption process.
-- **APP_SECURE_KEY**: To enhance security, the ticket ID is combined with an APP_SECURE_KEY, which is stored securely in the Cloudflare environment variables. This combination ensures that even if the KV database is compromised, an attacker cannot decrypt the conversation data without access to this secure key.
-- **Public Key (Conversation ID)**: Derived from the ticket ID, the public key serves as the conversation identifier. It is generated by combining the ticket ID with the APP_SECURE_KEY and hashing the result to produce a shorter, secure identifier.
+-   **Encryption**: A secure AES key is derived from the combined private key and APP_SECURE_KEY. This key encrypts the message payload, which includes the sender, recipient, and message content.
+-   **Decryption**: The same AES key derivation process is used to decrypt messages for the recipient.
 
-### 2\. **Encryption and Decryption Process**
+### 3\. Cloudflare Workers and KV Storage
 
-Messages sent through the bot are encrypted using AES-GCM encryption. The encryption and decryption process is designed to ensure that only the intended recipient can read the messages, even if the data is intercepted or accessed by unauthorized parties.
+The bot is hosted on Cloudflare Workers, providing a secure, scalable environment for processing requests. User data and conversations are stored in Cloudflare's KV storage, a globally distributed key-value store offering high availability and resilience.
 
-#### Encryption Flow:
+### 4\. Data Integrity and Tamper Protection
 
-- **Key Derivation**: A secure AES key is derived from the combined private key and APP_SECURE_KEY using the Web Cryptography API.
-- **Message Encryption**: The derived AES key is used to encrypt the conversation payload, which includes the sender, recipient, and message content. The encrypted data is then stored in the KV storage.
+Combining the ticket ID with the APP_SECURE_KEY ensures that encryption keys maintain integrity, protecting against tampering and unauthorized decryption attempts.
 
-#### Decryption Flow:
+### 5\. Logging and Auditing
 
-- **Key Derivation**: The same process is used to derive the AES key during decryption.
-- **Message Decryption**: The encrypted payload is decrypted using the derived AES key, allowing the recipient to access the message content.
+The bot logs significant actions, such as user registration, message sending, and system errors. Logs are stored securely in Cloudflare's R2 storage (if available) or the KV storage, providing an audit trail for security reviews.
 
-### 3\. **Cloudflare Workers and KV Storage**
+### 6\. Request Authentication
 
-The bot is hosted on Cloudflare Workers, which provides a secure and scalable environment for processing requests. User data and conversations are stored in Cloudflare's KV storage, a globally distributed key-value store that offers high availability and resilience.
+The bot only accepts requests from the official Telegram API by validating the `X-Telegram-Bot-Api-Secret-Token` header, protecting against unauthorized requests.
 
-### 4\. **Data Integrity and Tamper Protection**
+Getting Started
+---------------
 
-By combining the ticket ID with the APP_SECURE_KEY, the bot ensures that the integrity of the encryption keys is maintained. This approach protects against key tampering and unauthorized decryption attempts. Additionally, by using AES-GCM, the bot benefits from built-in data integrity checks that detect any tampering with the encrypted data.
-
-### 5\. **Logging and Auditing**
-
-The bot implements a comprehensive logging system that records all significant actions, such as user registration, message sending, and system errors. These logs are stored securely in Cloudflare's R2 storage (if available) or the KV storage. This logging mechanism provides an audit trail that can be used for security reviews and forensic analysis.
-
-### 6\. **Request Authentication**
-
-The bot only accepts requests from the official Telegram API by validating the X-Telegram-Bot-Api-Secret-Token header. This ensures that the bot is not exposed to unauthorized or malicious requests.
-
-## Summary
-
-The **Nekonymous** bot employs a multi-layered security strategy to protect user data and communications. By integrating advanced cryptographic techniques, secure storage solutions, and robust logging mechanisms, the bot ensures that all user interactions are private, secure, and resilient against potential threats. The combination of the ticket ID with the APP_SECURE_KEY adds an additional layer of security, making it extremely difficult for attackers to compromise the integrity and confidentiality of the system.
-
-This security overview reflects the bot's commitment to maintaining the highest standards of data protection and user privacy.
-
-## Getting Started
-
-Welcome to the Nekonymous bot project! This guide will help you set up the development environment and get the bot running locally.
+Follow these steps to set up the development environment and get the bot running locally.
 
 ### Prerequisites
 
-Before you start, ensure you have the following installed:
+Ensure you have the following installed:
 
-- **Node.js** (v16.x or higher recommended)
-- **npm** (comes with Node.js)
-- **Git** (for version control)
-- **Cloudflare Account** (for deployment)
-- **Wrangler** (Cloudflare's CLI tool)
+-   **Node.js** (v16.x or higher recommended)
+-   **npm** (comes with Node.js)
+-   **Git** (for version control)
+-   **Cloudflare Account** (for deployment)
+-   **Wrangler** (Cloudflare's CLI tool)
 
 ### Setup Instructions
 
-1. **Clone the Repository**
+1.  **Clone the Repository**
 
-   Clone the repository to your local machine using Git:
+    Clone the repository to your local machine using Git:
 
-   git clone git@github.com:mehotkhan/Nekonymous.git
-   cd Nekonymous
+    bash
 
-2. **Install Dependencies**
+    Copy code
 
-   Install the required Node.js packages:
+    `git clone git@github.com:mehotkhan/Nekonymous.git
+    cd Nekonymous`
 
-   npm install
+2.  **Install Dependencies**
 
-3. **Configure Environment Variables**
+    Install the required Node.js packages:
 
-   Set up your environment variables. These include sensitive data such as API tokens. You can use `.env` files for local development:
+    Copy code
 
-   cp .env.example .env
+    `npm install`
 
-   Edit the `.env` file to include your Cloudflare API token, Telegram API token, and other necessary configurations.
+3.  **Configure Environment Variables**
 
-4. **Run the Bot Locally**
+    Set up your environment variables. You can use `.env` files for local development:
 
-   Use Wrangler to run the bot locally:
+    bash
 
-   npm run dev
+    Copy code
 
-   This will start the bot on a local Cloudflare Worker instance.
+    `cp .env.example .env`
 
-5. **Lint and Format Your Code**
+    Edit the `.env` file to include your Cloudflare API token, Telegram API token, and other necessary configurations.
 
-   To ensure your code meets the project's style guidelines, you can run the linter and formatter:
+4.  **Run the Bot Locally**
 
-   npm run lint:fix
+    Use Wrangler to run the bot locally:
 
-6. **Deploying to Cloudflare**
+    arduino
 
-   When you're ready to deploy your bot to Cloudflare Workers, use the following command:
+    Copy code
 
-   npm run deploy
+    `npm run dev`
 
-   Ensure your Cloudflare account and API token are correctly configured in your Wrangler settings.
+    This will start the bot on a local Cloudflare Worker instance.
 
-7. **Clean KV Store**
+5.  **Lint and Format Your Code**
 
-   If you need to clear the KV store during development, use the following command:
+    To ensure your code meets the project's style guidelines, run the linter and formatter:
 
-   npm run clean:kv
+    arduino
+
+    Copy code
+
+    `npm run lint:fix`
+
+6.  **Deploying to Cloudflare**
+
+    When you're ready to deploy your bot to Cloudflare Workers, use:
+
+    arduino
+
+    Copy code
+
+    `npm run deploy`
+
+    Ensure your Cloudflare account and API token are correctly configured in your Wrangler settings.
+
+7.  **Clean KV Store**
+
+    If you need to clear the KV store during development, use:
+
+    arduino
+
+    Copy code
+
+    `npm run clean:kv`
+ 
