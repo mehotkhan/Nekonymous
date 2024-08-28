@@ -162,7 +162,7 @@ export const handleMenuCommand = async (
     break;
 
   case "درباره و حریم خصوصی":
-    await ctx.reply(escapeMarkdownV2(ABOUT_PRIVACY_COMMAND_MESSAGE), {
+    await ctx.reply(ABOUT_PRIVACY_COMMAND_MESSAGE, {
       reply_markup: mainMenu,
       parse_mode: "MarkdownV2",
     });
