@@ -7,6 +7,10 @@ workers_dev = true
 kv_namespaces = [
     { binding = "anonymous_kv", id = "414fb07aae8b4b5d9fac86a0cad1720e" },
 ]
+
+r2_buckets = [
+  { binding = "r2_bucket", bucket_name = "nekonymous"}
+]
 [placement]
 mode = "smart"
 

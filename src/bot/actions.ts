@@ -86,14 +86,14 @@ export const handleReplyAction = async (
         conversation
       );
       await ctx.reply(REPLAY_TO_MESSAGE);
-      // await logger.saveLog("new_replay_success", {});
+      await logger.saveLog("new_replay_success", {});
     } else {
       await ctx.reply(NoConversationFoundMessage);
-      // await logger.saveLog("new_replay_failed", {});
+      await logger.saveLog("new_replay_failed", {});
     }
   } catch (error) {
     await ctx.reply(JSON.stringify(error));
-    // await logger.saveLog("new_replay_unknown", error);
+    await logger.saveLog("new_replay_unknown", error);
   }
   await ctx.answerCallbackQuery();
 };
@@ -147,13 +147,13 @@ export const handleBlockAction = async (
           reply_markup: replyKeyboard,
         }
       );
-      // await logger.saveLog("user_block_success", {});
+      await logger.saveLog("user_block_success", {});
     } else {
       await ctx.reply(HuhMessage);
-      // await logger.saveLog("user_block_failed", {});
+      await logger.saveLog("user_block_failed", {});
     }
   } catch (error) {
-    // await logger.saveLog("user_block_unknown", error);
+    await logger.saveLog("user_block_unknown", error);
   }
   await ctx.answerCallbackQuery();
 };
@@ -204,17 +204,17 @@ export const handleUnblockAction = async (
             reply_markup: replyKeyboard,
           }
         );
-        // await logger.saveLog("user_unblock_success", {});
+        await logger.saveLog("user_unblock_success", {});
       } else {
         await ctx.reply(HuhMessage);
-        // await logger.saveLog("user_unblock_failed1", {});
+        await logger.saveLog("user_unblock_failed1", {});
       }
     } else {
       await ctx.reply(HuhMessage);
-      // await logger.saveLog("user_unblock_failed2", {});
+      await logger.saveLog("user_unblock_failed2", {});
     }
   } catch (error) {
-    // await logger.saveLog("user_unblock_unknown", error);
+    await logger.saveLog("user_unblock_unknown", error);
   }
 
   await ctx.answerCallbackQuery();
