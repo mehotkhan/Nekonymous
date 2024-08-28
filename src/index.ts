@@ -52,7 +52,6 @@ router.get(
  * API endpoint to get chart data in JSON format.
  * This will be used to update the chart data on the home page every 5 seconds.
  */
-
 router.get(
   "/api/chart-data",
   async (request: Request, env: Environment, ctx: ExecutionContext) => {
@@ -61,58 +60,63 @@ router.get(
     let conversationsCount;
     let usersCount;
 
-    if (env.nekonymousr2) {
-      // Initialize the Logger with the R2 bucket
-      const logger = new Logger(env.nekonymousr2);
+    try {
+      if (env.nekonymousr2) {
+        const logger = new Logger(env.nekonymousr2);
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - 7); // 7 days ago
+        const endDate = new Date(); // Now
 
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - 7); // 7 days ago
-      const endDate = new Date(); // Now
+        onlineUsersChartData = await logger.generateOnlineUsersChartData(
+          startDate,
+          endDate
+        );
 
-      // Generate chart data for online users per week
-      onlineUsersChartData = await logger.generateOnlineUsersChartData(
-        startDate,
-        endDate
-      );
+        const logs = await logger.getLogs();
+        onlineUsersCount = logs.filter(
+          (log) => log.action === "new_conversation"
+        ).length;
+        conversationsCount = logs.filter(
+          (log) => log.action === "new_conversation"
+        ).length;
+        usersCount = logs.filter((log) => log.action === "new_user").length;
+      } else {
+        const userModel = new KVModel<User>("user", env.NekonymousKV);
+        const conversationModel = new KVModel<string>(
+          "conversation",
+          env.NekonymousKV
+        );
+        const currentConversationModel = new KVModel<CurrentConversation>(
+          "currentConversation",
+          env.NekonymousKV
+        );
 
-      // Retrieve total counts from logs
-      const logs = await logger.getLogs(); // Get all logs
-      onlineUsersCount = logs.filter(
-        (log) => log.action === "new_conversation"
-      ).length;
-      conversationsCount = logs.filter(
-        (log) => log.action === "new_conversation"
-      ).length; // Assuming each "new_conversation" log represents a conversation
-      usersCount = logs.filter((log) => log.action === "new_user").length;
-    } else {
-      const userModel = new KVModel<User>("user", env.NekonymousKV);
+        onlineUsersCount = await currentConversationModel.count();
+        conversationsCount = await conversationModel.count();
+        usersCount = await userModel.count();
 
-      const conversationModel = new KVModel<string>(
-        "conversation",
-        env.NekonymousKV
-      );
-      const currentConversationModel = new KVModel<CurrentConversation>(
-        "currentConversation",
-        env.NekonymousKV
-      );
-      // Count online users, conversations, and users
-      onlineUsersCount = await currentConversationModel.count();
-      conversationsCount = await conversationModel.count();
-      usersCount = await userModel.count();
-
-      // Provide sample chart data for fallback
+        onlineUsersChartData = {
+          labels: [
+            "2024-08-20",
+            "2024-08-21",
+            "2024-08-22",
+            "2024-08-23",
+            "2024-08-24",
+            "2024-08-25",
+            "2024-08-26",
+          ],
+          data: [10, 12, 8, 14, 6, 9, 11],
+        };
+      }
+    } catch (error) {
+      console.error("Failed to generate chart data", error);
       onlineUsersChartData = {
-        labels: [
-          "2024-08-20",
-          "2024-08-21",
-          "2024-08-22",
-          "2024-08-23",
-          "2024-08-24",
-          "2024-08-25",
-          "2024-08-26",
-        ],
-        data: [10, 12, 8, 14, 6, 9, 11],
+        labels: [],
+        data: [],
       };
+      onlineUsersCount = 0;
+      conversationsCount = 0;
+      usersCount = 0;
     }
 
     return Response.json({

@@ -34,14 +34,18 @@ class Logger {
       return;
     }
 
-    const logEntry: LogEntry = {
-      action,
-      timestamp: new Date().toISOString(),
-      details,
-    };
+    try {
+      const logEntry: LogEntry = {
+        action,
+        timestamp: new Date().toISOString(),
+        details,
+      };
 
-    const logKey = this.generateLogKey();
-    await this.r2Bucket.put(logKey, JSON.stringify(logEntry));
+      const logKey = this.generateLogKey();
+      await this.r2Bucket.put(logKey, JSON.stringify(logEntry));
+    } catch (error) {
+      console.error(`Failed to save log entry for action: ${action}`, error);
+    }
   }
 
   /**
@@ -56,21 +60,26 @@ class Logger {
       return [];
     }
 
-    const logs: LogEntry[] = [];
-    const options = prefix
-      ? { prefix: `${this.logKeyPrefix}${prefix}` }
-      : { prefix: this.logKeyPrefix };
-    const objects = await this.r2Bucket.list(options);
+    try {
+      const logs: LogEntry[] = [];
+      const options = prefix
+        ? { prefix: `${this.logKeyPrefix}${prefix}` }
+        : { prefix: this.logKeyPrefix };
+      const objects = await this.r2Bucket.list(options);
 
-    for (const object of objects.objects) {
-      const logData = await this.r2Bucket.get(object.key);
-      if (logData) {
-        const logText = await logData.text();
-        logs.push(JSON.parse(logText));
+      for (const object of objects.objects) {
+        const logData = await this.r2Bucket.get(object.key);
+        if (logData) {
+          const logText = await logData.text();
+          logs.push(JSON.parse(logText));
+        }
       }
-    }
 
-    return logs;
+      return logs;
+    } catch (error) {
+      console.error("Failed to retrieve logs", error);
+      return [];
+    }
   }
 
   /**

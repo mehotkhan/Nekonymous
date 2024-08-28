@@ -50,7 +50,7 @@ export const HomePageContent = async (env: Environment) => {
       </div>
       <canvas
         id="onlineUsersChart"
-        class="mb-8 border-t w-full hidden"
+        class="mb-8 border-t w-full"
       ></canvas>
       <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
       <script>
@@ -84,34 +84,34 @@ export const HomePageContent = async (env: Environment) => {
               ],
             };
 
-            // if (!myChart) {
-            //   myChart = new Chart(ctx, {
-            //     type: "line",
-            //     data: chartData,
-            //     options: {
-            //       responsive: true,
-            //       scales: {
-            //         x: {
-            //           title: {
-            //             display: true,
-            //             text: "Date",
-            //           },
-            //         },
-            //         y: {
-            //           title: {
-            //             display: true,
-            //             text: "Online Users",
-            //           },
-            //           beginAtZero: true,
-            //         },
-            //       },
-            //     },
-            //   });
-            // } else {
-            //   myChart.data.labels = chartData.labels;
-            //   myChart.data.datasets[0].data = chartData.datasets[0].data;
-            //   myChart.update();
-            // }
+            if (!myChart) {
+              myChart = new Chart(ctx, {
+                type: "line",
+                data: chartData,
+                options: {
+                  responsive: true,
+                  scales: {
+                    x: {
+                      title: {
+                        display: true,
+                        text: "Date",
+                      },
+                    },
+                    y: {
+                      title: {
+                        display: true,
+                        text: "Online Users",
+                      },
+                      beginAtZero: true,
+                    },
+                  },
+                },
+              });
+            } else {
+              myChart.data.labels = chartData.labels;
+              myChart.data.datasets[0].data = chartData.datasets[0].data;
+              myChart.update();
+            }
           } catch (error) {
             console.error("Error fetching chart data:", error);
           }
