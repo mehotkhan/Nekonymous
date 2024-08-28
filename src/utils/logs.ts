@@ -13,12 +13,13 @@ class Logger {
   }
 
   /**
-   * Generates a unique key for each log entry based on the current timestamp.
+   * Generates a unique key for each log entry based on the current timestamp and action.
+   * @param {string} action - The action name to include in the log key.
    * @returns {string} - The key to use when storing the log entry in R2.
    */
-  private generateLogKey(): string {
+  private generateLogKey(action: string): string {
     const timestamp = new Date().toISOString();
-    return `${this.logKeyPrefix}${timestamp}.json`;
+    return `${this.logKeyPrefix}${action}/${timestamp}.json`;
   }
 
   /**
@@ -41,7 +42,7 @@ class Logger {
         details,
       };
 
-      const logKey = this.generateLogKey();
+      const logKey = this.generateLogKey(action);
       await this.r2Bucket.put(logKey, JSON.stringify(logEntry));
     } catch (error) {
       console.error(`Failed to save log entry for action: ${action}`, error);
@@ -51,21 +52,19 @@ class Logger {
   /**
    * Retrieves log entries from the R2 bucket.
    * If the R2 bucket is not available, this method will return an empty array.
-   * @param {string} [prefix] - An optional prefix to filter log entries (e.g., specific actions).
+   * @param {string} [action] - An optional action to filter log entries (e.g., "new_user").
    * @returns {Promise<LogEntry[]>} - A promise that resolves to an array of log entries.
    */
-  public async getLogs(prefix?: string): Promise<LogEntry[]> {
+  public async getLogs(action?: string): Promise<LogEntry[]> {
     if (!this.r2Bucket) {
       console.warn("R2 bucket is not defined. Returning an empty log list.");
       return [];
     }
 
     try {
+      const prefix = action ? `${this.logKeyPrefix}${action}/` : this.logKeyPrefix;
       const logs: LogEntry[] = [];
-      const options = prefix
-        ? { prefix: `${this.logKeyPrefix}${prefix}` }
-        : { prefix: this.logKeyPrefix };
-      const objects = await this.r2Bucket.list(options);
+      const objects = await this.r2Bucket.list({ prefix });
 
       for (const object of objects.objects) {
         const logData = await this.r2Bucket.get(object.key);
@@ -95,11 +94,6 @@ class Logger {
     startDate: Date,
     endDate: Date
   ): Promise<LogEntry[]> {
-    if (!this.r2Bucket) {
-      console.warn("R2 bucket is not defined. Returning an empty log list.");
-      return [];
-    }
-
     const allLogs = await this.getLogs(action);
     return allLogs.filter((log) => {
       const logDate = new Date(log.timestamp);
@@ -108,35 +102,7 @@ class Logger {
   }
 
   /**
-   * Example usage: Generates a JSON array of online users per week for graphing purposes.
-   * If the R2 bucket is not available, this method will return an empty array.
-   * @param {Date} startDate - The start of the week.
-   * @param {Date} endDate - The end of the week.
-   * @returns {Promise<any[]>} - A promise that resolves to a JSON array of online user data.
-   */
-  public async generateOnlineUsersReport(
-    startDate: Date,
-    endDate: Date
-  ): Promise<any[]> {
-    if (!this.r2Bucket) {
-      console.warn("R2 bucket is not defined. Returning an empty report.");
-      return [];
-    }
-
-    const logs = await this.getLogsByActionAndDateRange(
-      "new_conversation",
-      startDate,
-      endDate
-    );
-    const onlineUsers: any[] = logs.map((log) => ({
-      timestamp: log.timestamp,
-    }));
-
-    return onlineUsers;
-  }
-
-  /**
-   * Example usage: Generates chart data for online users per week.
+   * Generates chart data for online users per week.
    * If the R2 bucket is not available, this method will return empty labels and data.
    * @param {Date} startDate - The start of the week.
    * @param {Date} endDate - The end of the week.
@@ -146,14 +112,12 @@ class Logger {
     startDate: Date,
     endDate: Date
   ): Promise<{ labels: string[]; data: number[] }> {
-    if (!this.r2Bucket) {
-      console.warn("R2 bucket is not defined. Returning empty chart data.");
-      return { labels: [], data: [] };
-    }
+    const logs = await this.getLogsByActionAndDateRange(
+      "new_conversation",
+      startDate,
+      endDate
+    );
 
-    const logs = await this.generateOnlineUsersReport(startDate, endDate);
-
-    // Group by day and count online users
     const chartData: { [key: string]: number } = {};
     logs.forEach((log) => {
       const day = log.timestamp.split("T")[0]; // Get only the date part

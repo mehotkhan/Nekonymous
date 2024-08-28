@@ -4,8 +4,6 @@ import { createBot } from "./bot/bot";
 import HomePageContent from "./front";
 import AboutPageContent from "./front/about";
 import pageLayout from "./front/layout";
-import { CurrentConversation, User } from "./types";
-import { KVModel } from "./utils/kv-storage";
 import Logger from "./utils/logs";
 import { Router } from "./utils/router";
 import { convertToPersianNumbers } from "./utils/tools";
@@ -56,9 +54,9 @@ router.get(
   "/api/chart-data",
   async (request: Request, env: Environment, ctx: ExecutionContext) => {
     let onlineUsersChartData;
-    let onlineUsersCount;
-    let conversationsCount;
-    let usersCount;
+    let onlineUsersCount = 0;
+    let conversationsCount = 0;
+    let usersCount = 0;
 
     try {
       const logger = new Logger(env.nekonymousr2);
@@ -71,23 +69,18 @@ router.get(
         endDate
       );
 
-      const logs = await logger.getLogs();
-      onlineUsersCount = logs.filter(
-        (log) => log.action === "new_conversation"
-      ).length;
-      conversationsCount = logs.filter(
-        (log) => log.action === "new_conversation"
-      ).length;
-      usersCount = logs.filter((log) => log.action === "new_user").length;
+      const newConversationLogs = await logger.getLogs("new_conversation");
+      const newUserLogs = await logger.getLogs("new_user");
+
+      onlineUsersCount = newConversationLogs.length;
+      conversationsCount = newConversationLogs.length; // Assuming each "new_conversation" log represents a conversation
+      usersCount = newUserLogs.length;
     } catch (error) {
       console.error("Failed to generate chart data", error);
       onlineUsersChartData = {
         labels: [],
         data: [],
       };
-      onlineUsersCount = 0;
-      conversationsCount = 0;
-      usersCount = 0;
     }
 
     return Response.json({
@@ -98,6 +91,7 @@ router.get(
     });
   }
 );
+
 /**
  * Define the bot webhook route.
  * This handles incoming webhook requests from Telegram to the bot.
