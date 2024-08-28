@@ -119,7 +119,7 @@ export const HomePageContent = async (env: Environment) => {
 
         // Fetch initial data and set interval for periodic updates
         fetchData();
-        // setInterval(fetchData, 5000); // Update the chart and stats every 5 seconds
+        setInterval(fetchData, 5000); // Update the chart and stats every 5 seconds
       </script>
     </div>
   `;
