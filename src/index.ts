@@ -61,53 +61,24 @@ router.get(
     let usersCount;
 
     try {
-      if (env.nekonymousr2) {
-        const logger = new Logger(env.nekonymousr2);
-        const startDate = new Date();
-        startDate.setDate(startDate.getDate() - 7); // 7 days ago
-        const endDate = new Date(); // Now
+      const logger = new Logger(env.nekonymousr2);
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - 7); // 7 days ago
+      const endDate = new Date(); // Now
 
-        onlineUsersChartData = await logger.generateOnlineUsersChartData(
-          startDate,
-          endDate
-        );
+      onlineUsersChartData = await logger.generateOnlineUsersChartData(
+        startDate,
+        endDate
+      );
 
-        const logs = await logger.getLogs();
-        onlineUsersCount = logs.filter(
-          (log) => log.action === "new_conversation"
-        ).length;
-        conversationsCount = logs.filter(
-          (log) => log.action === "new_conversation"
-        ).length;
-        usersCount = logs.filter((log) => log.action === "new_user").length;
-      } else {
-        const userModel = new KVModel<User>("user", env.NekonymousKV);
-        const conversationModel = new KVModel<string>(
-          "conversation",
-          env.NekonymousKV
-        );
-        const currentConversationModel = new KVModel<CurrentConversation>(
-          "currentConversation",
-          env.NekonymousKV
-        );
-
-        onlineUsersCount = await currentConversationModel.count();
-        conversationsCount = await conversationModel.count();
-        usersCount = await userModel.count();
-
-        onlineUsersChartData = {
-          labels: [
-            "2024-08-20",
-            "2024-08-21",
-            "2024-08-22",
-            "2024-08-23",
-            "2024-08-24",
-            "2024-08-25",
-            "2024-08-26",
-          ],
-          data: [10, 12, 8, 14, 6, 9, 11],
-        };
-      }
+      const logs = await logger.getLogs();
+      onlineUsersCount = logs.filter(
+        (log) => log.action === "new_conversation"
+      ).length;
+      conversationsCount = logs.filter(
+        (log) => log.action === "new_conversation"
+      ).length;
+      usersCount = logs.filter((log) => log.action === "new_user").length;
     } catch (error) {
       console.error("Failed to generate chart data", error);
       onlineUsersChartData = {
