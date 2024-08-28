@@ -2,14 +2,13 @@ import { html } from "@worker-tools/html";
 import { Environment } from "../types";
 
 export const HomePageContent = async (env: Environment) => {
-  // Return the HTML content with dynamic data and auto-refreshing chart
   return html`
     <div class="max-w-4xl mx-auto p-6">
       <h1 class="text-3xl font-bold text-center mb-8">
         به ${env.BOT_NAME} خوش آمدید
       </h1>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <div class="bg-blue-100 p-6 rounded-lg shadow-lg text-center">
           <h2 class="text-xl font-bold text-blue-700 mb-2">کاربران آنلاین</h2>
           <p id="onlineUsersCount" class="text-lg text-blue-600">
@@ -22,14 +21,26 @@ export const HomePageContent = async (env: Environment) => {
             در حال بارگذاری...
           </p>
         </div>
+    
+      </div>
+
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+    
         <div class="bg-purple-100 p-6 rounded-lg shadow-lg text-center">
           <h2 class="text-xl font-bold text-purple-700 mb-2">کاربران فعال</h2>
           <p id="usersCount" class="text-lg text-purple-600">
             در حال بارگذاری...
           </p>
         </div>
+        <div class="bg-red-100 p-6 rounded-lg shadow-lg text-center">
+          <h2 class="text-xl font-bold text-red-700 mb-2">کاربران بلاک شده</h2>
+          <p id="blockedUsersCount" class="text-lg text-red-600">
+            در حال بارگذاری...
+          </p>
+        </div>
       </div>
-
+      
       <p class="text-lg leading-relaxed mb-4">
         نِکونیموس ما به شما این امکان را می‌دهد که به صورت ناشناس و امن با دیگر
         کاربران چت کنید. این ربات با استفاده از تکنولوژی‌های پیشرفته و رمزنگاری
@@ -42,16 +53,13 @@ export const HomePageContent = async (env: Environment) => {
       </p>
       <div class="text-center mb-10 py-10">
         <a
-          href="https://t.me/anonymous_gap_bot?start"
+          href="https://t.me/nekonymous_bot?start"
           class="inline-block bg-blue-600 text-white text-xl font-semibold py-3 px-6 rounded-lg shadow-md hover:bg-blue-700 transition"
         >
           شروع به استفاده از ربات
         </a>
       </div>
-      <canvas
-        id="onlineUsersChart"
-        class="mb-8 border-t w-full"
-      ></canvas>
+      <canvas id="onlineUsersChart" class="mb-8 border-t w-full"></canvas>
       <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
       <script>
         const ctx = document
@@ -70,6 +78,8 @@ export const HomePageContent = async (env: Environment) => {
               data.conversationsCount + " مکالمه";
             document.getElementById("usersCount").textContent =
               data.usersCount + " نفر";
+            document.getElementById("blockedUsersCount").textContent =
+              data.blockedUsersCount + " نفر";
 
             const chartData = {
               labels: data.chartData.labels,
@@ -119,7 +129,7 @@ export const HomePageContent = async (env: Environment) => {
 
         // Fetch initial data and set interval for periodic updates
         fetchData();
-        setInterval(fetchData, 5000); // Update the chart and stats every 5 seconds
+        setInterval(fetchData, 10000); // Update the chart and stats every 10 seconds
       </script>
     </div>
   `;
