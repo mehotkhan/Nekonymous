@@ -12,8 +12,8 @@ import { convertToPersianNumbers } from "./utils/tools";
 
 export interface Environment {
   SECRET_TELEGRAM_API_TOKEN: string;
-  anonymous_kv: KVNamespace;
-  r2_bucket: R2Bucket;
+  NekonymousKV: KVNamespace;
+  nekonymousr2: R2Bucket;
   BOT_INFO: string;
   BOT_NAME: string;
   APP_SECURE_KEY: string;
@@ -61,9 +61,9 @@ router.get(
     let conversationsCount;
     let usersCount;
 
-    if (env.r2_bucket) {
+    if (env.nekonymousr2) {
       // Initialize the Logger with the R2 bucket
-      const logger = new Logger(env.r2_bucket);
+      const logger = new Logger(env.nekonymousr2);
 
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - 7); // 7 days ago
@@ -85,15 +85,15 @@ router.get(
       ).length; // Assuming each "new_conversation" log represents a conversation
       usersCount = logs.filter((log) => log.action === "new_user").length;
     } else {
-      const userModel = new KVModel<User>("user", env.anonymous_kv);
+      const userModel = new KVModel<User>("user", env.NekonymousKV);
 
       const conversationModel = new KVModel<string>(
         "conversation",
-        env.anonymous_kv
+        env.NekonymousKV
       );
       const currentConversationModel = new KVModel<CurrentConversation>(
         "currentConversation",
-        env.anonymous_kv
+        env.NekonymousKV
       );
       // Count online users, conversations, and users
       onlineUsersCount = await currentConversationModel.count();

@@ -25,9 +25,9 @@ import {
 export const createBot = (env: Environment) => {
   const {
     SECRET_TELEGRAM_API_TOKEN,
-    anonymous_kv,
+    NekonymousKV,
     BOT_INFO,
-    r2_bucket,
+    nekonymousr2,
     APP_SECURE_KEY,
   } = env;
 
@@ -37,17 +37,17 @@ export const createBot = (env: Environment) => {
   });
 
   // Initialize KV models for different data types
-  const userModel = new KVModel<User>("user", anonymous_kv);
-  const userBlockListModel = new KVModel<BlockList>("blockList", anonymous_kv);
-  const conversationModel = new KVModel<string>("conversation", anonymous_kv);
+  const userModel = new KVModel<User>("user", NekonymousKV);
+  const userBlockListModel = new KVModel<BlockList>("blockList", NekonymousKV);
+  const conversationModel = new KVModel<string>("conversation", NekonymousKV);
   const currentConversationModel = new KVModel<CurrentConversation>(
     "currentConversation",
-    anonymous_kv
+    NekonymousKV
   );
-  const userIdToUUID = new KVModel<string>("userIdToUUID", anonymous_kv);
+  const userIdToUUID = new KVModel<string>("userIdToUUID", NekonymousKV);
 
   // Initialize Logger
-  const logger = new Logger(r2_bucket);
+  const logger = new Logger(nekonymousr2);
 
   /**
    * Handles the /start command.

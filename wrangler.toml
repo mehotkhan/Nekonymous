@@ -5,11 +5,11 @@ compatibility_date = "2024-08-19"
 workers_dev = true
 
 kv_namespaces = [
-    { binding = "nekonymous", id = "42628bc70b644ea7903d7f3cd723b279" },
+    { binding = "NekonymousKV", id = "de26a1b398614383a2b9702fafaa8824" },
 ]
 
 r2_buckets = [
-  { binding = "r2_bucket", bucket_name = "nekonymous"}
+  { binding = "nekonymousr2", bucket_name = "nekonymousr2"}
 ]
 [placement]
 mode = "smart"
