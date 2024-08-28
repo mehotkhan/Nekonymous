@@ -5,7 +5,7 @@ compatibility_date = "2024-08-19"
 workers_dev = true
 
 kv_namespaces = [
-    { binding = "anonymous_kv", id = "414fb07aae8b4b5d9fac86a0cad1720e" },
+    { binding = "nekonymous", id = "42628bc70b644ea7903d7f3cd723b279" },
 ]
 
 r2_buckets = [
