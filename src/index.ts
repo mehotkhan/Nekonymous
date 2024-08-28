@@ -57,6 +57,7 @@ router.get(
     let onlineUsersCount = 0;
     let conversationsCount = 0;
     let usersCount = 0;
+    let blockedUsersCount = 0;
 
     try {
       const logger = new Logger(env.nekonymousr2);
@@ -64,17 +65,18 @@ router.get(
       startDate.setDate(startDate.getDate() - 7); // 7 days ago
       const endDate = new Date(); // Now
 
+      // Generate chart data for online users per week
       onlineUsersChartData = await logger.generateOnlineUsersChartData(
         startDate,
         endDate
       );
 
-      const newConversationLogs = await logger.getLogs("new_conversation");
-      const newUserLogs = await logger.getLogs("new_user");
-
-      onlineUsersCount = newConversationLogs.length;
-      conversationsCount = newConversationLogs.length; // Assuming each "new_conversation" log represents a conversation
-      usersCount = newUserLogs.length;
+      // Retrieve counts from logs
+      const logCounts = await logger.getLogCounts();
+      onlineUsersCount = logCounts.onlineUsersCount;
+      conversationsCount = logCounts.conversationsCount;
+      usersCount = logCounts.usersCount;
+      blockedUsersCount = logCounts.blockedUsersCount;
     } catch (error) {
       console.error("Failed to generate chart data", error);
       onlineUsersChartData = {
@@ -88,9 +90,11 @@ router.get(
       onlineUsersCount: convertToPersianNumbers(onlineUsersCount),
       conversationsCount: convertToPersianNumbers(conversationsCount),
       usersCount: convertToPersianNumbers(usersCount),
+      blockedUsersCount: convertToPersianNumbers(blockedUsersCount),
     });
   }
 );
+
 
 /**
  * Define the bot webhook route.

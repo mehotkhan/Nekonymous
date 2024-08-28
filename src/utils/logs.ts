@@ -82,7 +82,80 @@ class Logger {
   }
 
   /**
-   * Generates a JSON array of logs filtered by a specific action and time range.
+   * Retrieves log counts based on action type.
+   * If the R2 bucket is not available, this method will return zero.
+   * @returns {Promise<{usersCount: number, conversationsCount: number, blockedUsersCount: number, onlineUsersCount: number}>}
+   */
+  public async getLogCounts(): Promise<{
+    usersCount: number;
+    conversationsCount: number;
+    blockedUsersCount: number;
+    onlineUsersCount: number;
+  }> {
+    if (!this.r2Bucket) {
+      console.warn("R2 bucket is not defined. Returning zero counts.");
+      return {
+        usersCount: 0,
+        conversationsCount: 0,
+        blockedUsersCount: 0,
+        onlineUsersCount: 0,
+      };
+    }
+
+    try {
+      const newUserLogs = await this.getLogs("new_user_success");
+      const newConversationLogs = await this.getLogs("new_conversation_success");
+      const blockedUsersLogs = await this.getLogs("user_block_success");
+      const onlineUsersLogs = await this.getLogs("new_conversation_success");
+
+      return {
+        usersCount: newUserLogs.length,
+        conversationsCount: newConversationLogs.length,
+        blockedUsersCount: blockedUsersLogs.length,
+        onlineUsersCount: onlineUsersLogs.length,
+      };
+    } catch (error) {
+      console.error("Failed to retrieve log counts", error);
+      return {
+        usersCount: 0,
+        conversationsCount: 0,
+        blockedUsersCount: 0,
+        onlineUsersCount: 0,
+      };
+    }
+  }
+
+  /**
+   * Generates chart data for online users per week.
+   * If the R2 bucket is not available, this method will return empty labels and data.
+   * @param {Date} startDate - The start of the week.
+   * @param {Date} endDate - The end of the week.
+   * @returns {Promise<{ labels: string[], data: number[] }>} - A promise that resolves to an object with labels and data for graphing.
+   */
+  public async generateOnlineUsersChartData(
+    startDate: Date,
+    endDate: Date
+  ): Promise<{ labels: string[]; data: number[] }> {
+    const logs = await this.getLogsByActionAndDateRange(
+      "new_conversation_success",
+      startDate,
+      endDate
+    );
+
+    const chartData: { [key: string]: number } = {};
+    logs.forEach((log) => {
+      const day = log.timestamp.split("T")[0]; // Get only the date part
+      chartData[day] = (chartData[day] || 0) + 1;
+    });
+
+    const labels = Object.keys(chartData);
+    const data = Object.values(chartData);
+
+    return { labels, data };
+  }
+
+  /**
+   * Retrieves logs filtered by action and within a date range.
    * If the R2 bucket is not available, this method will return an empty array.
    * @param {string} action - The action to filter logs by.
    * @param {Date} startDate - The start of the time range.
@@ -99,35 +172,6 @@ class Logger {
       const logDate = new Date(log.timestamp);
       return logDate >= startDate && logDate <= endDate;
     });
-  }
-
-  /**
-   * Generates chart data for online users per week.
-   * If the R2 bucket is not available, this method will return empty labels and data.
-   * @param {Date} startDate - The start of the week.
-   * @param {Date} endDate - The end of the week.
-   * @returns {Promise<{ labels: string[], data: number[] }>} - A promise that resolves to an object with labels and data for graphing.
-   */
-  public async generateOnlineUsersChartData(
-    startDate: Date,
-    endDate: Date
-  ): Promise<{ labels: string[]; data: number[] }> {
-    const logs = await this.getLogsByActionAndDateRange(
-      "new_conversation",
-      startDate,
-      endDate
-    );
-
-    const chartData: { [key: string]: number } = {};
-    logs.forEach((log) => {
-      const day = log.timestamp.split("T")[0]; // Get only the date part
-      chartData[day] = (chartData[day] || 0) + 1;
-    });
-
-    const labels = Object.keys(chartData);
-    const data = Object.values(chartData);
-
-    return { labels, data };
   }
 }
 
