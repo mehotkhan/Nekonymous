@@ -1,7 +1,7 @@
 import { webhookCallback } from "grammy";
 import { createBot } from "./bot/bot";
 import { AboutPageContent } from "./front/about";
-import { HomePageContent } from "./front/Home";
+import { HomePageContent } from "./front/home";
 import pageLayout from "./front/layout";
 import Logger from "./utils/logs";
 import { Router } from "./utils/router";
