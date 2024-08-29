@@ -24,8 +24,8 @@ import { createReplyKeyboard } from "./actions";
 
 // Main menu keyboard used across various commands
 const mainMenu = new Keyboard()
-  .text("دریافت لینک")
   .text("درباره و حریم خصوصی")
+  .text("دریافت لینک")
   .resized();
 
 /**
