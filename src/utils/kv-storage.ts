@@ -107,9 +107,15 @@ export class KVModel<T extends Record<string, any>> {
     }
 
     if (push && Array.isArray(record[field])) {
-      // Ensure no duplicates before pushing the new value
-      if (!(record[field] as any[]).includes(value)) {
-        (record[field] as any[]).push(value);
+      // Ensure no duplicates in the array
+      const existingArray = record[field] as any[];
+      const existingItemIndex = existingArray.findIndex((item: any) =>
+        typeof item === "object" && item.ticketId
+          ? item.ticketId === value.ticketId
+          : item === value
+      );
+      if (existingItemIndex === -1) {
+        existingArray.push(value);
       }
     } else {
       record[field] = value;

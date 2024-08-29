@@ -101,3 +101,12 @@ export const UnsupportedMessageTypeMessage = `
 فرمت فایل پشتیبانی نمی‌شود!
 لطفاً فرمت‌های پشتیبانی شده مانند متن، تصویر، ویدئو و ... را ارسال کنید.
 `;
+
+export const NEW_INBOX_MESSAGE = `
+یک پیام ناشناس جدید دارید
+/inbox
+`;
+
+export const EMPTY_INBOX_MESSAGE = `
+پیام ناخوانده ندارید 
+`;

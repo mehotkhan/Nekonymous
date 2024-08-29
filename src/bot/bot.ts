@@ -7,7 +7,11 @@ import {
   handleReplyAction,
   handleUnblockAction,
 } from "./actions";
-import { handleMessage, handleStartCommand } from "./commands";
+import {
+  handleMessage,
+  handleStartCommand,
+  handleInboxCommand,
+} from "./commands";
 
 /**
  * Initializes and configures a new instance of the Telegram bot.
@@ -49,6 +53,21 @@ export const createBot = (env: Environment) => {
    */
   bot.command("start", (ctx) =>
     handleStartCommand(ctx, userModel, userUUIDtoId, logger)
+  );
+
+  /**
+   * Handles the /inbpx command.
+   *
+  
+   */
+  bot.command("inbox", (ctx) =>
+    handleInboxCommand(
+      ctx,
+      userModel,
+      conversationModel,
+      logger,
+      APP_SECURE_KEY
+    )
   );
 
   /**

@@ -9,8 +9,11 @@ export interface User {
     to?: number;
     reply_to_message_id?: number;
   };
+  inbox: {
+    timestamp: string;
+    ticketId: string;
+  }[];
 }
-
 /**
  * Interface representing a Conversation between two users.
  */
@@ -18,6 +21,16 @@ export interface Conversation {
   from: number;
   to: number;
   reply_to_message_id: number;
+  message_text?: string;
+  photo_id?: string;
+  video_id?: string;
+  animation_id?: string;
+  document_id?: string;
+  sticker_id?: string;
+  voice_id?: string;
+  video_note_id?: string;
+  audio_id?: string;
+  caption?: string;
 }
 
 /**
