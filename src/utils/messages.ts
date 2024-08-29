@@ -71,16 +71,6 @@ export const YOU_ARE_UNBLOCKED_MESSAGE = `
 محدودیت‌های قبلی برداشته شده است.
 `;
 
-export const SETTINGS_COMMAND_MESSAGE = `
-تنظیمات:
-/updateName: به‌روزرسانی نام کاربری
-/pauseAccount: توقف دریافت پیام‌ها
-/deleteAccount: حذف حساب کاربری
-`;
-export const SHUFFLE_MODE_COMMAND_MESSAGE = `
-یک قاعده کاملا رندوم ولی با معنی :)
-`;
-
 export const ABOUT_PRIVACY_COMMAND_MESSAGE = `
 درباره نِکونیموس:
 (نسخه آزمایشی!)
@@ -105,12 +95,6 @@ export const ABOUT_PRIVACY_COMMAND_MESSAGE = `
 - گزارش‌دهی شفاف: تمامی اقدامات انجام شده توسط ربات، از جمله ثبت‌نام کاربران و ارسال پیام‌ها، به صورت امن در سیستم لاگ‌گذاری ذخیره می‌شود. این گزارش‌ها برای بهبود خدمات و اطمینان از رعایت حریم خصوصی مورد استفاده قرار می‌گیرند.
 
 لینک بات : https://nekonymous.alizemani.ir/
-`;
-
-
-export const DELETE_USER_COMMAND_MESSAGE = `
-حساب کاربری شما و تمام پیام‌های مرتبط به طور کامل حذف شد.
-اگر قصد بازگشت دارید، همیشه خوش آمدید!
 `;
 
 export const UnsupportedMessageTypeMessage = `

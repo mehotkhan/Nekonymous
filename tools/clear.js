@@ -1,8 +1,8 @@
 const { exec } = require("child_process");
 const fs = require("fs");
 
-const NAMESPACE_ID = "414fb07aae8b4b5d9fac86a0cad1720e"; // replace with your namespace ID
-const CONVERSATION_PREFIX = "conversation:"; // Prefix for conversation keys
+const NAMESPACE_ID = "de26a1b398614383a2b9702fafaa8824"; // replace with your namespace ID
+// const CONVERSATION_PREFIX = "conversation:"; // Prefix for conversation keys
 
 // Step 1: List all keys
 exec(
@@ -15,8 +15,7 @@ exec(
 
     // Step 2: Filter keys that start with the conversation prefix
     const keys = JSON.parse(stdout)
-      .map((keyObj) => keyObj.name)
-      .filter((key) => key.startsWith(CONVERSATION_PREFIX));
+      .map((keyObj) => keyObj.name);
 
     if (keys.length === 0) {
       console.log("No conversation keys found to delete.");

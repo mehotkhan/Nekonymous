@@ -83,4 +83,66 @@ export class KVModel<T extends Record<string, any>> {
     });
     return keys.keys.length;
   }
+
+  /**
+   * Updates a specific field in the stored record. If the field is an array, this method
+   * allows you to push a new item into that array.
+   *
+   * @param {string} id - The unique identifier for the record.
+   * @param {string} field - The field to update within the record.
+   * @param {any} value - The value to set or push to the field.
+   * @param {boolean} [push=false] - Whether to push the value to an array or simply update the field.
+   * @returns {Promise<void>} - A promise that resolves when the operation completes.
+   */
+  async updateField(
+    id: string,
+    field: keyof T,
+    value: any,
+    push: boolean = false
+  ): Promise<void> {
+    const record = await this.get(id);
+
+    if (!record) {
+      throw new Error(`Record with ID ${id} not found.`);
+    }
+
+    if (push && Array.isArray(record[field])) {
+      // Ensure no duplicates before pushing the new value
+      if (!(record[field] as any[]).includes(value)) {
+        (record[field] as any[]).push(value);
+      }
+    } else {
+      record[field] = value;
+    }
+
+    await this.save(id, record);
+  }
+
+  /**
+   * Removes an item from an array field in the stored record.
+   *
+   * @param {string} id - The unique identifier for the record.
+   * @param {string} field - The field to update within the record.
+   * @param {any} value - The value to remove from the array.
+   * @returns {Promise<void>} - A promise that resolves when the operation completes.
+   */
+  async popItemFromField(
+    id: string,
+    field: keyof T,
+    value: any
+  ): Promise<void> {
+    const record = await this.get(id);
+
+    if (!record) {
+      throw new Error(`Record with ID ${id} not found.`);
+    }
+
+    if (Array.isArray(record[field])) {
+      record[field] = (record[field] as any[]).filter((item) => item !== value);
+    } else {
+      throw new Error(`Field ${String(field)} is not an array.`);
+    }
+
+    await this.save(id, record);
+  }
 }

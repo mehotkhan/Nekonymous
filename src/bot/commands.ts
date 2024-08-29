@@ -1,21 +1,18 @@
 import { Context, Keyboard } from "grammy";
 import { WebUUID } from "web-uuid";
-import { BlockList, CurrentConversation, User } from "../types";
+import { User } from "../types";
 import { KVModel } from "../utils/kv-storage";
-import Logger from "../utils/logs"; // Import Logger class
+import Logger from "../utils/logs";
 import {
   ABOUT_PRIVACY_COMMAND_MESSAGE,
-  DELETE_USER_COMMAND_MESSAGE,
   HuhMessage,
   MESSAGE_SENT_MESSAGE,
   NoUserFoundMessage,
-  SETTINGS_COMMAND_MESSAGE,
   StartConversationMessage,
   UnsupportedMessageTypeMessage,
   USER_IS_BLOCKED_MESSAGE,
   USER_LINK_MESSAGE,
   WelcomeMessage,
-  SHUFFLE_MODE_COMMAND_MESSAGE,
 } from "../utils/messages";
 import {
   encryptedPayload,
@@ -27,91 +24,83 @@ import { createReplyKeyboard } from "./actions";
 
 // Main menu keyboard used across various commands
 const mainMenu = new Keyboard()
-  .text("شافل مود:)")
   .text("دریافت لینک")
-  .row()
   .text("درباره و حریم خصوصی")
-  .text("تنظیمات")
   .resized();
 
 /**
  * Handles the /start command to initiate or continue a user's interaction with the bot.
- *
- * This function manages the user's entry point into the bot's system. It handles new users by generating
- * a unique UUID and storing it in the KV store, or continues the interaction for existing users.
+ * It generates a unique UUID for new users and continues the interaction for existing users.
  *
  * @param {Context} ctx - The context of the current Telegram update.
  * @param {KVModel<User>} userModel - KVModel instance for managing user data.
- * @param {KVModel<string>} userIdToUUID - KVModel instance for mapping user IDs to UUIDs.
- * @param {KVModel<BlockList>} userBlockListModel - KVModel instance for managing user block lists.
- * @param {KVModel<CurrentConversation>} currentConversationModel - KVModel instance for managing current conversations.
+ * @param {KVModel<string>} userUUIDtoId - KVModel instance for managing UUID to user ID mapping.
+ * @param {Logger} logger - Logger instance for saving logs.
  */
 export const handleStartCommand = async (
   ctx: Context,
   userModel: KVModel<User>,
-  userIdToUUID: KVModel<string>,
-  userBlockListModel: KVModel<BlockList>,
-  currentConversationModel: KVModel<CurrentConversation>,
+  userUUIDtoId: KVModel<string>,
   logger: Logger
 ): Promise<void> => {
-  const currentUserId: number = ctx.from?.id!;
-  let currentUserUUID = await userIdToUUID.get(currentUserId.toString());
+  const currentUserId = ctx.from?.id!;
 
-  // New user: Generate UUID and save to KV storage
   if (!ctx.match) {
-    if (!currentUserUUID) {
-      currentUserUUID = new WebUUID().toString();
-      await userIdToUUID.save(currentUserId.toString(), currentUserUUID);
-      await userModel.save(currentUserUUID, {
-        userId: currentUserId,
-        userName: ctx.from?.first_name!,
-      });
-      await logger.saveLog("new_user_success", {});
-    }
+    try {
+      let currentUserUUID = "";
+      const currentUser = await userModel.get(currentUserId.toString());
 
-    // Send welcome message with the user's unique bot link
-    await ctx.reply(
-      WelcomeMessage.replace(
-        "UUID_USER_URL",
-        `https://t.me/nekonymous_bot?start=${currentUserUUID}`
-      ),
-      {
-        reply_markup: mainMenu,
+      if (!currentUser) {
+        currentUserUUID = new WebUUID().toString();
+        await userUUIDtoId.save(currentUserUUID, currentUserId.toString());
+        await userModel.save(currentUserId.toString(), {
+          userUUID: currentUserUUID,
+          userName: ctx.from?.first_name,
+          blockList: [],
+          currentConversation: {},
+        });
+        await logger.saveLog("new_user_success", {});
+      } else {
+        currentUserUUID = currentUser.userUUID;
       }
-    );
-    // Log the new user action
-  } else if (typeof ctx.match === "string") {
-    // User initiated bot with another user's UUID (e.g., from a shared link)
-    const otherUserUUID = ctx.match;
-    const otherUser = await userModel.get(otherUserUUID);
 
-    if (otherUser) {
-      const blockList =
-        (await userBlockListModel.get(otherUser.userId.toString())) || {};
-      if (blockList[currentUserId]) {
+      await ctx.reply(
+        WelcomeMessage.replace(
+          "UUID_USER_URL",
+          `https://t.me/nekonymous_bot?start=${currentUserUUID}`
+        ),
+        {
+          reply_markup: mainMenu,
+        }
+      );
+    } catch (error) {
+      await logger.saveLog("new_user_failed", error);
+    }
+  } else if (typeof ctx.match === "string") {
+    const otherUserUUID = ctx.match;
+    const otherUserId = await userUUIDtoId.get(otherUserUUID);
+
+    if (otherUserId) {
+      const otherUser = await userModel.get(otherUserId);
+      if (otherUser?.blockList.includes(currentUserId)) {
         await ctx.reply(USER_IS_BLOCKED_MESSAGE);
         return;
       }
 
-      // Establish conversation with the other user
-      const conversation = {
-        to: otherUser.userId,
-      };
-      await currentConversationModel.save(
+      await userModel.updateField(
         currentUserId.toString(),
-        conversation
+        "currentConversation",
+        { to: otherUserId }
       );
       await ctx.reply(
         StartConversationMessage.replace("USER_NAME", otherUser.userName)
       );
       await logger.saveLog("new_conversation_success", {});
     } else {
-      // No user found with the provided UUID
-      await logger.saveLog("new_conversation_failed", {});
+      await logger.saveLog("new_conversation_failed", { NoUserFoundMessage });
       await ctx.reply(NoUserFoundMessage);
     }
   } else {
-    // Handle unexpected cases
     await ctx.reply(HuhMessage, {
       reply_markup: mainMenu,
     });
@@ -120,147 +109,120 @@ export const handleStartCommand = async (
 };
 
 /**
- * Handles menu-related commands such as "دریافت لینک", "تنظیمات", "درباره", etc.
- *
- * This function manages the main menu commands available to the user.
- * It responds to specific commands by sending the appropriate message or performing the related action.
+ * Handles menu-related commands such as "دریافت لینک", "درباره", etc.
  *
  * @param {Context} ctx - The context of the current Telegram update.
- * @param {KVModel<string>} userIdToUUID - KVModel instance for mapping user IDs to UUIDs.
+ * @param {string} userUUID - The UUID of the current user.
  * @returns {Promise<boolean>} - Returns true if a command was successfully handled, otherwise false.
  */
 export const handleMenuCommand = async (
   ctx: Context,
-  userIdToUUID: KVModel<string>
+  userUUID: string
 ): Promise<boolean> => {
-  const currentUserId = ctx.from?.id!;
   const msgPayload = ctx.message?.text;
-  const currentUserUUID = await userIdToUUID.get(currentUserId.toString());
 
   switch (msgPayload) {
   case "دریافت لینک":
     await ctx.reply(
       USER_LINK_MESSAGE.replace(
         "UUID_USER_URL",
-        `https://t.me/nekonymous_bot?start=${currentUserUUID}`
+        `https://t.me/nekonymous_bot?start=${userUUID}`
       ),
       {
         reply_markup: mainMenu,
       }
     );
     break;
-
-  case "تنظیمات":
-    await ctx.reply(SETTINGS_COMMAND_MESSAGE, {
-      reply_markup: mainMenu,
-    });
-    break;
-  case "شافل مود:)":
-    await ctx.reply(SHUFFLE_MODE_COMMAND_MESSAGE, {
-      reply_markup: mainMenu,
-    });
-    break;
-
   case "درباره و حریم خصوصی":
     await ctx.reply(escapeMarkdownV2(ABOUT_PRIVACY_COMMAND_MESSAGE), {
       reply_markup: mainMenu,
       parse_mode: "MarkdownV2",
     });
     break;
-
   default:
-    return false; // Command not found in the menu
+    return false;
   }
 
-  return true; // Command was handled
+  return true;
 };
 
 /**
- * Handles all incoming messages that are not menu commands.
- *
- * This function processes messages that don't correspond to menu commands, such as normal text messages or media.
- * It checks if the user is currently engaged in a conversation and routes the message accordingly.
+ * Handles all incoming messages that are not menu commands, routing them based on the user's current conversation state.
  *
  * @param {Context} ctx - The context of the current Telegram update.
- * @param {KVModel<string>} userIdToUUID - KVModel instance for mapping user IDs to UUIDs.
- * @param {KVModel<BlockList>} userBlockListModel - KVModel instance for managing user block lists.
- * @param {KVModel<CurrentConversation>} currentConversationModel - KVModel instance for managing current conversations.
- * @param {KVModel<string>} conversationModel - KVModel instance for managing encrypted conversation data.
- * @param {Logger} logger - Logger instance for saving logs to R2.
-* @param {string} APP_SECURE_KEY - The application-specific secure key.
- 
-*/
+ * @param {KVModel<User>} userModel - KVModel instance for managing user data.
+ * @param {KVModel<string>} conversationModel - KVModel instance for managing conversation data.
+ * @param {Logger} logger - Logger instance for saving logs.
+ * @param {string} APP_SECURE_KEY - The application-specific secure key.
+ */
 export const handleMessage = async (
   ctx: Context,
-  userIdToUUID: KVModel<string>,
-  userBlockListModel: KVModel<BlockList>,
-  currentConversationModel: KVModel<CurrentConversation>,
+  userModel: KVModel<User>,
   conversationModel: KVModel<string>,
   logger: Logger,
   APP_SECURE_KEY: string
 ): Promise<void> => {
   const currentUserId = ctx.from?.id!;
+  const currentUser = await userModel.get(currentUserId.toString());
 
-  // First, check if the message is a menu command
-  const isMenuCommandHandled = await handleMenuCommand(ctx, userIdToUUID);
-  if (isMenuCommandHandled) {
-    return; // If a menu command was handled, return early
-  }
-
-  const currentConversation = await currentConversationModel.get(
-    currentUserId.toString()
+  const isMenuCommandHandled = await handleMenuCommand(
+    ctx,
+    currentUser?.userUUID || ""
   );
+  if (isMenuCommandHandled) return;
 
-  if (!currentConversation) {
-    // If no conversation is active, respond with a generic error message
+  if (!currentUser?.currentConversation?.to) {
     await ctx.reply(HuhMessage, {
       reply_markup: mainMenu,
     });
     await logger.saveLog("current_conversation_failed", {});
-
     return;
   }
 
   try {
     const ticketId = generateTicketId(APP_SECURE_KEY);
-    const blockList =
-      (await userBlockListModel.get(currentConversation.to.toString())) || {};
-    const isBlocked = !!blockList[currentUserId];
+    const otherUser = await userModel.get(
+      currentUser.currentConversation.to.toString()
+    );
+    const isBlocked =
+      otherUser?.blockList.includes(currentUserId.toString()) || false;
 
     const replyOptions: any = {
       reply_markup: createReplyKeyboard(ticketId, isBlocked),
     };
 
-    // Conditionally add the reply_to_message_id parameter if reply_to_message_id exists
-    if (currentConversation.reply_to_message_id) {
+    if (currentUser.currentConversation.reply_to_message_id) {
       replyOptions.reply_to_message_id =
-        currentConversation.reply_to_message_id;
+        currentUser.currentConversation.reply_to_message_id;
     }
 
-    if (ctx.message?.text) {
-      // Handle text messages with MarkdownV2 spoilers
+    switch (true) {
+    case !!ctx.message?.text:
       await ctx.api.sendMessage(
-        currentConversation.to,
-        escapeMarkdownV2(ctx.message.text),
+        currentUser.currentConversation.to,
+        escapeMarkdownV2(ctx.message.text!),
         {
           parse_mode: "MarkdownV2",
           ...replyOptions,
         }
       );
-    } else if (ctx.message?.photo) {
-      // Handle photo messages with an optional caption
-      const photo = ctx.message.photo[ctx.message.photo.length - 1];
-      await ctx.api.sendPhoto(currentConversation.to, photo.file_id, {
-        ...replyOptions,
-        caption: ctx.message.caption
-          ? escapeMarkdownV2(ctx.message.caption)
-          : undefined,
-        parse_mode: "MarkdownV2",
-      });
-    } else if (ctx.message?.video) {
-      // Handle video messages with an optional caption
+      break;
+    case !!ctx.message?.photo:
+      await ctx.api.sendPhoto(
+        currentUser.currentConversation.to,
+        ctx.message.photo[ctx.message.photo.length - 1].file_id,
+        {
+          ...replyOptions,
+          caption: ctx.message.caption
+            ? escapeMarkdownV2(ctx.message.caption)
+            : undefined,
+          parse_mode: "MarkdownV2",
+        }
+      );
+      break;
+    case !!ctx.message?.video:
       await ctx.api.sendVideo(
-        currentConversation.to,
+        currentUser.currentConversation.to,
         ctx.message.video.file_id,
         {
           ...replyOptions,
@@ -270,9 +232,10 @@ export const handleMessage = async (
           parse_mode: "MarkdownV2",
         }
       );
-    } else if (ctx.message?.animation) {
+      break;
+    case !!ctx.message?.animation:
       await ctx.api.sendAnimation(
-        currentConversation.to,
+        currentUser.currentConversation.to,
         ctx.message.animation.file_id,
         {
           ...replyOptions,
@@ -282,10 +245,10 @@ export const handleMessage = async (
           parse_mode: "MarkdownV2",
         }
       );
-    } else if (ctx.message?.document) {
-      // Handle file/document messages with an optional caption
+      break;
+    case !!ctx.message?.document:
       await ctx.api.sendDocument(
-        currentConversation.to,
+        currentUser.currentConversation.to,
         ctx.message.document.file_id,
         {
           ...replyOptions,
@@ -295,36 +258,36 @@ export const handleMessage = async (
           parse_mode: "MarkdownV2",
         }
       );
-    } else if (ctx.message?.sticker) {
-      // Handle sticker messages
+      break;
+    case !!ctx.message?.sticker:
       await ctx.api.sendSticker(
-        currentConversation.to,
+        currentUser.currentConversation.to,
         ctx.message.sticker.file_id,
         replyOptions
       );
-    } else if (ctx.message?.voice) {
-      // Handle voice messages
+      break;
+    case !!ctx.message?.voice:
       await ctx.api.sendVoice(
-        currentConversation.to,
+        currentUser.currentConversation.to,
         ctx.message.voice.file_id,
         replyOptions
       );
-    } else if (ctx.message?.video_note) {
-      // Handle video note messages
+      break;
+    case !!ctx.message?.video_note:
       await ctx.api.sendVideoNote(
-        currentConversation.to,
+        currentUser.currentConversation.to,
         ctx.message.video_note.file_id,
         replyOptions
       );
-    } else if (ctx.message?.audio) {
-      // Handle audio messages
+      break;
+    case !!ctx.message?.audio:
       await ctx.api.sendAudio(
-        currentConversation.to,
+        currentUser.currentConversation.to,
         ctx.message.audio.file_id,
         replyOptions
       );
-    } else {
-      // If the message type is not recognized, respond with an error message or handle accordingly
+      break;
+    default:
       await ctx.reply(UnsupportedMessageTypeMessage, replyOptions);
     }
 
@@ -336,59 +299,22 @@ export const handleMessage = async (
       ticketId,
       JSON.stringify({
         from: currentUserId,
-        to: currentConversation.to,
+        to: currentUser.currentConversation.to,
         reply_to_message_id: ctx.message?.message_id,
       }),
       APP_SECURE_KEY
     );
+
     await conversationModel.save(conversationId, conversationData);
-    await currentConversationModel.delete(currentUserId.toString());
+    await userModel.updateField(
+      currentUserId.toString(),
+      "currentConversation",
+      undefined
+    );
   } catch (error) {
     await ctx.reply(HuhMessage + JSON.stringify(error), {
       reply_markup: mainMenu,
     });
     await logger.saveLog("new_conversation_unknown", error);
-  }
-};
-
-/**
- * Handles the /deleteAccount command to remove a user's data from the bot's storage.
- *
- * This function deletes the user's record, UUID mapping, and any other associated data,
- * effectively removing them from the bot's system.
- *
- * @param {Context} ctx - The context of the current Telegram update.
- * @param {KVModel<User>} userModel - KVModel instance for managing user data.
- * @param {KVModel<string>} userIdToUUID - KVModel instance for mapping user IDs to UUIDs.
- * @param {Logger} logger - Logger instance for saving logs to R2.
-
- */
-export const handleDeleteUserCommand = async (
-  ctx: Context,
-  userModel: KVModel<User>,
-  userIdToUUID: KVModel<string>,
-  logger: Logger
-): Promise<void> => {
-  const currentUserId = ctx.from?.id!;
-  const currentUserUUID = await userIdToUUID.get(currentUserId.toString());
-
-  try {
-    if (currentUserUUID) {
-      await userModel.delete(currentUserUUID);
-      await userIdToUUID.delete(currentUserId.toString());
-
-      // Log the delete user action
-      await logger.saveLog("delete_user_success", {});
-
-      await ctx.reply(DELETE_USER_COMMAND_MESSAGE, {
-        reply_markup: mainMenu,
-      });
-    } else {
-      await logger.saveLog("delete_user_failed", {});
-      await ctx.reply(NoUserFoundMessage);
-    }
-  } catch (error) {
-    await ctx.reply(JSON.stringify(error));
-    await logger.saveLog("delete_user_unknown", error);
   }
 };

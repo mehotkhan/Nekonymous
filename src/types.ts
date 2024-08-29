@@ -3,7 +3,12 @@
  */
 export interface User {
   userName: string;
-  userId: number;
+  userUUID: string;
+  blockList: number[];
+  currentConversation?: {
+    to?: number;
+    reply_to_message_id?: number;
+  };
 }
 
 /**
@@ -13,23 +18,6 @@ export interface Conversation {
   from: number;
   to: number;
   reply_to_message_id: number;
-}
-
-/**
- * Interface representing the CurrentConversation state of a user.
- * This tracks the current conversation a user is engaged in, along with the parent message ID.
- */
-export interface CurrentConversation {
-  to: number;
-  reply_to_message_id?: number;
-}
-
-/**
- * Interface representing a BlockList.
- * The key is a user ID (string) and the value is a boolean indicating if the user is blocked.
- */
-export interface BlockList {
-  [userId: string]: boolean;
 }
 
 /**

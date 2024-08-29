@@ -1,17 +1,13 @@
 import { Bot } from "grammy";
-import { BlockList, CurrentConversation, Environment, User } from "../types";
+import { Environment, User } from "../types";
 import { KVModel } from "../utils/kv-storage";
-import Logger from "../utils/logs"; // Import Logger class
+import Logger from "../utils/logs";
 import {
   handleBlockAction,
   handleReplyAction,
   handleUnblockAction,
 } from "./actions";
-import {
-  handleDeleteUserCommand,
-  handleMessage,
-  handleStartCommand,
-} from "./commands";
+import { handleMessage, handleStartCommand } from "./commands";
 
 /**
  * Initializes and configures a new instance of the Telegram bot.
@@ -38,13 +34,8 @@ export const createBot = (env: Environment) => {
 
   // Initialize KV models for different data types
   const userModel = new KVModel<User>("user", NekonymousKV);
-  const userBlockListModel = new KVModel<BlockList>("blockList", NekonymousKV);
   const conversationModel = new KVModel<string>("conversation", NekonymousKV);
-  const currentConversationModel = new KVModel<CurrentConversation>(
-    "currentConversation",
-    NekonymousKV
-  );
-  const userIdToUUID = new KVModel<string>("userIdToUUID", NekonymousKV);
+  const userUUIDtoId = new KVModel<string>("userUUIDtoId", NekonymousKV);
 
   // Initialize Logger
   const logger = new Logger(nekonymousr2);
@@ -57,24 +48,7 @@ export const createBot = (env: Environment) => {
    * in the KV storage.
    */
   bot.command("start", (ctx) =>
-    handleStartCommand(
-      ctx,
-      userModel,
-      userIdToUUID,
-      userBlockListModel,
-      currentConversationModel,
-      logger
-    )
-  );
-
-  /**
-   * Handles the /deleteAccount command.
-   *
-   * When a user sends the /deleteAccount command, this handler will delete their user records
-   * from the KV storage, effectively removing their presence from the system.
-   */
-  bot.command("deleteAccount", (ctx) =>
-    handleDeleteUserCommand(ctx, userModel, userIdToUUID, logger)
+    handleStartCommand(ctx, userModel, userUUIDtoId, logger)
   );
 
   /**
@@ -85,15 +59,7 @@ export const createBot = (env: Environment) => {
    * the current context.
    */
   bot.on("message", (ctx) =>
-    handleMessage(
-      ctx,
-      userIdToUUID,
-      userBlockListModel,
-      currentConversationModel,
-      conversationModel,
-      logger,
-      APP_SECURE_KEY
-    )
+    handleMessage(ctx, userModel, conversationModel, logger, APP_SECURE_KEY)
   );
 
   /**
@@ -104,14 +70,7 @@ export const createBot = (env: Environment) => {
    * preparing the bot to receive the reply.
    */
   bot.callbackQuery(/^reply_(.+)$/, (ctx) =>
-    handleReplyAction(
-      ctx,
-      currentConversationModel,
-      userBlockListModel,
-      conversationModel,
-      logger,
-      APP_SECURE_KEY
-    )
+    handleReplyAction(ctx, userModel, conversationModel, logger, APP_SECURE_KEY)
   );
 
   /**
@@ -121,13 +80,7 @@ export const createBot = (env: Environment) => {
    * their block list, preventing further communication until the block is removed.
    */
   bot.callbackQuery(/^block_(.+)$/, (ctx) =>
-    handleBlockAction(
-      ctx,
-      userBlockListModel,
-      conversationModel,
-      logger,
-      APP_SECURE_KEY
-    )
+    handleBlockAction(ctx, userModel, conversationModel, logger, APP_SECURE_KEY)
   );
 
   /**
@@ -139,7 +92,7 @@ export const createBot = (env: Environment) => {
   bot.callbackQuery(/^unblock_(.+)$/, (ctx) =>
     handleUnblockAction(
       ctx,
-      userBlockListModel,
+      userModel,
       conversationModel,
       logger,
       APP_SECURE_KEY
