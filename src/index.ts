@@ -1,8 +1,7 @@
-import { HTMLResponse } from "@worker-tools/html";
 import { webhookCallback } from "grammy";
 import { createBot } from "./bot/bot";
-import HomePageContent from "./front";
-import AboutPageContent from "./front/about";
+import { AboutPageContent } from "./front/about";
+import { HomePageContent } from "./front/Home";
 import pageLayout from "./front/layout";
 import Logger from "./utils/logs";
 import { Router } from "./utils/router";
@@ -27,11 +26,16 @@ const router = new Router();
 router.get(
   "/",
   async (request: Request, env: Environment, ctx: ExecutionContext) => {
-    return new HTMLResponse(
-      pageLayout(env.BOT_NAME, env.BOT_NAME, await HomePageContent(env))
-    );
+    const content = await HomePageContent(env);
+    const html = pageLayout("ارسال پیام تلگرام ناشناس", env.BOT_NAME, content);
+    return new Response(html, {
+      headers: {
+        "content-type": "text/html;charset=UTF-8",
+      },
+    });
   }
 );
+
 
 /**
  * Define the route for the about page.
@@ -40,9 +44,18 @@ router.get(
 router.get(
   "/about",
   async (request: Request, env: Environment, ctx: ExecutionContext) => {
-    return new HTMLResponse(
-      pageLayout("درباره", env.BOT_NAME, AboutPageContent)
-    );
+
+    const content =  AboutPageContent();
+    const html = pageLayout("درباره", env.BOT_NAME, content);
+    return new Response(html, {
+      headers: {
+        "content-type": "text/html;charset=UTF-8",
+      },
+    });
+
+    // return new HTMLResponse(
+    //   pageLayout("درباره", env.BOT_NAME, AboutPageContent)
+    // );
   }
 );
 

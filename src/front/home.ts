@@ -1,8 +1,7 @@
-import { html } from "@worker-tools/html";
 import { Environment } from "../types";
 
 export const HomePageContent = async (env: Environment) => {
-  return html`
+  return `
     <div class="max-w-4xl mx-auto p-6">
       <h1 class="text-3xl font-bold text-center mb-8">
         به ${env.BOT_NAME} خوش آمدید
@@ -21,12 +20,9 @@ export const HomePageContent = async (env: Environment) => {
             در حال بارگذاری...
           </p>
         </div>
-    
       </div>
 
-
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-    
         <div class="bg-purple-100 p-6 rounded-lg shadow-lg text-center">
           <h2 class="text-xl font-bold text-purple-700 mb-2">کاربران فعال</h2>
           <p id="usersCount" class="text-lg text-purple-600">

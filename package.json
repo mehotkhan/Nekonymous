@@ -29,7 +29,6 @@
     "@cloudflare/workers-types": "^4.20240821.1",
     "@noble/curves": "1.5.0",
     "@noble/hashes": "^1.4.0",
-    "@worker-tools/html": "2.0.0-pre.13",
     "grammy": "^1.29.0",
     "web-uuid": "0.1.0-pre.1"
   }

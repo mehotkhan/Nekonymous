@@ -17,9 +17,6 @@ importers:
       '@noble/hashes':
         specifier: ^1.4.0
         version: 1.4.0
-      '@worker-tools/html':
-        specifier: 2.0.0-pre.13
-        version: 2.0.0-pre.13
       grammy:
         specifier: ^1.29.0
         version: 1.29.0
@@ -398,12 +395,6 @@ packages:
   '@typescript-eslint/visitor-keys@8.3.0':
     resolution: {integrity: sha512-RmZwrTbQ9QveF15m/Cl28n0LXD6ea2CjkhH5rQ55ewz3H24w+AMCJHPVYaZ8/0HoG8Z3cLLFFycRXxeO2tz9FA==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
-
-  '@worker-tools/html@2.0.0-pre.13':
-    resolution: {integrity: sha512-MkmUNNX6fE/2tRM8iWpoSZ6hbZ4srMxzecPdyNvT4cydfYs6YEmFFv0w27839ALQxwtpsDCOKlDLEkhhzbMs9Q==}
-
-  '@worker-tools/stream-response@0.1.0-pre.4':
-    resolution: {integrity: sha512-PHMaXNbaavvtPWuPTjslNMmbFX0Wv4iKsa9ZiL+KkcTuXwSh5okMShYxt0st0bx4C137kIK/bBQqw/JBEKlP9Q==}
 
   abort-controller@3.0.0:
     resolution: {integrity: sha512-h8lQ8tacZYnR3vNQTgibj+tODHI5/+l06Au2Pcriv/Gmet0eaj4TwWH41sO9wnHDiQsEj19q0drzdWdeAHtweg==}
@@ -1349,9 +1340,6 @@ packages:
   typed-array-utils@0.2.4:
     resolution: {integrity: sha512-tttiItskXSSYIkbPfnYmSfL4nkcIxjUKyD4pZJCiwstGjpU4UwDBQfE6UR67xxikVFFcGduo3JCds4yKiA0RVQ==}
 
-  typed-array-utils@0.3.0-pre.0:
-    resolution: {integrity: sha512-hzkk8/bpvqCayQnQAno11R8qOWHrkTHR9k+JYVEBpHAQMF2YfPqBMKKkSmeSw2Qd4ri+QugFmj7ca4ckSr4Z4Q==}
-
   typescript-eslint@8.3.0:
     resolution: {integrity: sha512-EvWjwWLwwKDIJuBjk2I6UkV8KEQcwZ0VM10nR1rIunRDIP67QJTZAHBXTX0HW/oI1H10YESF8yWie8fRQxjvFA==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
@@ -1393,9 +1381,6 @@ packages:
 
   webidl-conversions@3.0.1:
     resolution: {integrity: sha512-2JAn3z8AR6rjK8Sm8orRC0h/bcl/DqL7tRPdGZ4I1CjdF+EaMLmYxBHyXuKL849eucPFhvBoxMsflfOb8kxaeQ==}
-
-  whatwg-stream-to-async-iter@0.6.2:
-    resolution: {integrity: sha512-ocSOY/Qe/Y5rLC3Xnz6gi8+A9niy+dUQSjnox/nRryKkV/NahxyspB/joyhYLBbQp1JAFrTBOVd/RUo0NrZ96g==}
 
   whatwg-url@5.0.0:
     resolution: {integrity: sha512-saE57nupxk6v3HY35+jzBwYa0rKSy0XR8JSxZPwgLr7ys0IBzhGviA1/TUGJLmSVqs8pb9AnvICXEuOHLprYTw==}
@@ -1721,15 +1706,6 @@ snapshots:
     dependencies:
       '@typescript-eslint/types': 8.3.0
       eslint-visitor-keys: 3.4.3
-
-  '@worker-tools/html@2.0.0-pre.13':
-    dependencies:
-      '@worker-tools/stream-response': 0.1.0-pre.4
-
-  '@worker-tools/stream-response@0.1.0-pre.4':
-    dependencies:
-      typed-array-utils: 0.3.0-pre.0
-      whatwg-stream-to-async-iter: 0.6.2
 
   abort-controller@3.0.0:
     dependencies:
@@ -2798,8 +2774,6 @@ snapshots:
 
   typed-array-utils@0.2.4: {}
 
-  typed-array-utils@0.3.0-pre.0: {}
-
   typescript-eslint@8.3.0(eslint@9.9.1)(typescript@5.5.4):
     dependencies:
       '@typescript-eslint/eslint-plugin': 8.3.0(@typescript-eslint/parser@8.3.0(eslint@9.9.1)(typescript@5.5.4))(eslint@9.9.1)(typescript@5.5.4)
@@ -2851,10 +2825,6 @@ snapshots:
       uuid-class: 0.13.0-alpha.1
 
   webidl-conversions@3.0.1: {}
-
-  whatwg-stream-to-async-iter@0.6.2:
-    dependencies:
-      tslib: 2.7.0
 
   whatwg-url@5.0.0:
     dependencies:
