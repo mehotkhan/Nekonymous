@@ -107,17 +107,24 @@ export class KVModel<T extends Record<string, any>> {
     }
 
     if (push && Array.isArray(record[field])) {
-      // Ensure no duplicates in the array
-      const existingArray = record[field] as any[];
-      const existingItemIndex = existingArray.findIndex((item: any) =>
-        typeof item === "object" && item.ticketId
-          ? item.ticketId === value.ticketId
-          : item === value
-      );
-      if (existingItemIndex === -1) {
-        existingArray.push(value);
+      // Ensure that only valid, non-empty values are pushed to the array
+      if (value && Object.keys(value).length > 0) {
+        (record[field] as any[]).push(value);
+      } else {
+        console.warn("Attempted to push an invalid value:", value);
+      }
+    } else if (push) {
+      // Initialize the array with the value if the field is not yet an array
+      if (value && Object.keys(value).length > 0) {
+        record[field] = [value] as any;
+      } else {
+        console.warn(
+          "Attempted to push an invalid value as a new array:",
+          value
+        );
       }
     } else {
+      // Otherwise, just set the value directly
       record[field] = value;
     }
 

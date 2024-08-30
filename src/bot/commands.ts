@@ -5,16 +5,16 @@ import { KVModel } from "../utils/kv-storage";
 import Logger from "../utils/logs";
 import {
   ABOUT_PRIVACY_COMMAND_MESSAGE,
+  EMPTY_INBOX_MESSAGE,
   HuhMessage,
   MESSAGE_SENT_MESSAGE,
   NEW_INBOX_MESSAGE,
-  EMPTY_INBOX_MESSAGE,
   NoUserFoundMessage,
   StartConversationMessage,
+  UnsupportedMessageTypeMessage,
   USER_IS_BLOCKED_MESSAGE,
   USER_LINK_MESSAGE,
   WelcomeMessage,
-  UnsupportedMessageTypeMessage,
 } from "../utils/messages";
 import {
   decryptPayload,
@@ -189,32 +189,46 @@ export const handleMessage = async (
     const conversation: Conversation = {
       from: currentUserId,
       to: currentUser.currentConversation.to,
-      reply_to_message_id: ctx.message?.message_id!,
+      reply_to_message_id: currentUser.currentConversation.reply_to_message_id,
+      reply_to_message_id_2: ctx.message?.message_id!,
     };
-
+ 
     if (ctx.message?.text) {
       conversation.message_text = ctx.message.text;
+      conversation.message_type = "text";
     } else if (ctx.message?.photo) {
+      conversation.message_type = "photo";
       conversation.photo_id =
         ctx.message.photo[ctx.message.photo.length - 1].file_id;
       if (ctx.message.caption) conversation.caption = ctx.message.caption;
     } else if (ctx.message?.video) {
+      conversation.message_type = "video";
       conversation.video_id = ctx.message.video.file_id;
       if (ctx.message.caption) conversation.caption = ctx.message.caption;
     } else if (ctx.message?.animation) {
+      conversation.message_type = "animation";
       conversation.animation_id = ctx.message.animation.file_id;
       if (ctx.message.caption) conversation.caption = ctx.message.caption;
     } else if (ctx.message?.document) {
+      conversation.message_type = "document";
       conversation.document_id = ctx.message.document.file_id;
       if (ctx.message.caption) conversation.caption = ctx.message.caption;
     } else if (ctx.message?.sticker) {
+      conversation.message_type = "sticker";
       conversation.sticker_id = ctx.message.sticker.file_id;
+      if (ctx.message.caption) conversation.caption = ctx.message.caption;
     } else if (ctx.message?.voice) {
+      conversation.message_type = "voice";
       conversation.voice_id = ctx.message.voice.file_id;
+      if (ctx.message.caption) conversation.caption = ctx.message.caption;
     } else if (ctx.message?.video_note) {
+      conversation.message_type = "video_note";
       conversation.video_note_id = ctx.message.video_note.file_id;
+      if (ctx.message.caption) conversation.caption = ctx.message.caption;
     } else if (ctx.message?.audio) {
+      conversation.message_type = "audio";
       conversation.audio_id = ctx.message.audio.file_id;
+      if (ctx.message.caption) conversation.caption = ctx.message.caption;
     }
 
     await ctx.reply(MESSAGE_SENT_MESSAGE);
@@ -253,12 +267,12 @@ export const handleMessage = async (
 };
 
 /**
- * Handle inbox command
+ * Handles the /inbox command, retrieving and displaying messages from the user's inbox.
  *
  * @param {Context} ctx - The context of the current Telegram update.
  * @param {KVModel<User>} userModel - KVModel instance for managing user data.
  * @param {KVModel<string>} conversationModel - KVModel instance for managing conversation data.
- * @param {Logger} logger - Logger instance for saving logs.
+ * @param {Logger} logger - Logger instancefor saving logs.
  * @param {string} APP_SECURE_KEY - The application-specific secure key.
  */
 export const handleInboxCommand = async (
@@ -289,88 +303,134 @@ export const handleInboxCommand = async (
         const replyOptions: any = {
           reply_markup: createReplyKeyboard(ticketId, isBlocked),
         };
-
+        // Conditionally add the reply_to_message_id parameter if reply_to_message_id exists
         if (decryptedMessage.reply_to_message_id) {
           replyOptions.reply_to_message_id =
             decryptedMessage.reply_to_message_id;
         }
-
         switch (decryptedMessage.message_type) {
         case "text":
           await ctx.reply(decryptedMessage.message_text, replyOptions);
           break;
         case "photo":
-          await ctx.api.sendPhoto(ctx.chat?.id!, decryptedMessage.file_id, {
+          await ctx.api.sendPhoto(ctx.chat?.id!, decryptedMessage.photo_id, {
             ...replyOptions,
-            caption: decryptedMessage.caption,
+            caption: decryptedMessage.caption
+              ? escapeMarkdownV2(decryptedMessage.caption)
+              : undefined,
+            parse_mode: "MarkdownV2",
           });
+
           break;
         case "video":
-          await ctx.api.sendVideo(ctx.chat?.id!, decryptedMessage.file_id, {
+          await ctx.api.sendVideo(ctx.chat?.id!, decryptedMessage.video_id, {
             ...replyOptions,
-            caption: decryptedMessage.caption,
+            caption: decryptedMessage.caption
+              ? escapeMarkdownV2(decryptedMessage.caption)
+              : undefined,
+            parse_mode: "MarkdownV2",
           });
+
           break;
         case "animation":
           await ctx.api.sendAnimation(
               ctx.chat?.id!,
-              decryptedMessage.file_id,
+              decryptedMessage.animation_id,
               {
                 ...replyOptions,
-                caption: decryptedMessage.caption,
+                caption: decryptedMessage.caption
+                  ? escapeMarkdownV2(decryptedMessage.caption)
+                  : undefined,
+                parse_mode: "MarkdownV2",
               }
           );
+
           break;
         case "document":
           await ctx.api.sendDocument(
               ctx.chat?.id!,
-              decryptedMessage.file_id,
+              decryptedMessage.document_id,
               {
                 ...replyOptions,
-                caption: decryptedMessage.caption,
+                caption: decryptedMessage.caption
+                  ? escapeMarkdownV2(decryptedMessage.caption)
+                  : undefined,
+                parse_mode: "MarkdownV2",
               }
           );
+
           break;
         case "sticker":
           await ctx.api.sendSticker(
               ctx.chat?.id!,
-              decryptedMessage.file_id,
-              replyOptions
+              decryptedMessage.sticker_id,
+              {
+                ...replyOptions,
+                caption: decryptedMessage.caption
+                  ? escapeMarkdownV2(decryptedMessage.caption)
+                  : undefined,
+                parse_mode: "MarkdownV2",
+              }
           );
           break;
+
         case "voice":
-          await ctx.api.sendVoice(
-              ctx.chat?.id!,
-              decryptedMessage.file_id,
-              replyOptions
-          );
+          await ctx.api.sendVoice(ctx.chat?.id!, decryptedMessage.voice_id, {
+            ...replyOptions,
+            caption: decryptedMessage.caption
+              ? escapeMarkdownV2(decryptedMessage.caption)
+              : undefined,
+            parse_mode: "MarkdownV2",
+          });
           break;
+
         case "video_note":
           await ctx.api.sendVideoNote(
               ctx.chat?.id!,
-              decryptedMessage.file_id,
-              replyOptions
+              decryptedMessage.video_note_id,
+              {
+                ...replyOptions,
+                caption: decryptedMessage.caption
+                  ? escapeMarkdownV2(decryptedMessage.caption)
+                  : undefined,
+                parse_mode: "MarkdownV2",
+              }
           );
+
           break;
         case "audio":
-          await ctx.api.sendAudio(
+          await ctx.api.sendVideoNote(
               ctx.chat?.id!,
-              decryptedMessage.file_id,
-              replyOptions
+              decryptedMessage.audio_id,
+              {
+                ...replyOptions,
+                caption: decryptedMessage.caption
+                  ? escapeMarkdownV2(decryptedMessage.caption)
+                  : undefined,
+                parse_mode: "MarkdownV2",
+              }
           );
+
           break;
         default:
           await ctx.reply(UnsupportedMessageTypeMessage, replyOptions);
+          break;
         }
+
+ 
       } catch (error) {
         await logger.saveLog("inbox_message_processing_failed", {
           ticketId,
           error,
         });
       }
-      // Remove the processed ticket from inbox
-      await userModel.updateField(currentUserId.toString(), "inbox", [], true);
     }
+    // Remove the processed ticket from inbox
+    await userModel.updateField(
+      currentUserId.toString(),
+      "inbox",
+      []
+    );
   } else {
     await ctx.reply(EMPTY_INBOX_MESSAGE, {
       reply_markup: mainMenu,

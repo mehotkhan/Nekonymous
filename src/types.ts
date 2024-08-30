@@ -21,6 +21,7 @@ export interface Conversation {
   from: number;
   to: number;
   reply_to_message_id: number;
+  message_type?: string;
   message_text?: string;
   photo_id?: string;
   video_id?: string;
