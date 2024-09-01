@@ -1,19 +1,24 @@
+import { DurableObjectNamespace } from "@cloudflare/workers-types";
 import { webhookCallback } from "grammy";
 import { createBot } from "./bot/bot";
 import { AboutPageContent } from "./front/about";
 import { HomePageContent } from "./front/home";
 import pageLayout from "./front/layout";
-import Logger from "./utils/logs";
+import { InboxDurableObject } from "./inboxDU";
+import { KVModel } from "./utils/kv-storage";
 import { Router } from "./utils/router";
 import { convertToPersianNumbers } from "./utils/tools";
+
+// INBOX DURABLE OBJECTS
+export { InboxDurableObject };
 
 export interface Environment {
   SECRET_TELEGRAM_API_TOKEN: string;
   NekonymousKV: KVNamespace;
-  nekonymousr2: R2Bucket;
   BOT_INFO: string;
   BOT_NAME: string;
   APP_SECURE_KEY: string;
+  INBOX_DO: DurableObjectNamespace;
 }
 
 // Initialize a Router instance for handling different routes
@@ -36,7 +41,6 @@ router.get(
   }
 );
 
-
 /**
  * Define the route for the about page.
  * This will serve a page with information about the application or service.
@@ -44,8 +48,7 @@ router.get(
 router.get(
   "/about",
   async (request: Request, env: Environment, ctx: ExecutionContext) => {
-
-    const content =  AboutPageContent();
+    const content = AboutPageContent();
     const html = pageLayout("درباره", env.BOT_NAME, content);
     return new Response(html, {
       headers: {
@@ -66,37 +69,21 @@ router.get(
 router.get(
   "/api/chart-data",
   async (request: Request, env: Environment, ctx: ExecutionContext) => {
-    let onlineUsersChartData;
-    let onlineUsersCount = 0;
-    let conversationsCount = 0;
-    let usersCount = 0;
-    let blockedUsersCount = 0;
+    const statsModel = new KVModel<number>("stats", env.NekonymousKV);
 
-    try {
-      const logger = new Logger(env.nekonymousr2);
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - 7); // 7 days ago
-      const endDate = new Date(); // Now
+    const today = new Date().toISOString().split("T")[0];
 
-      // Generate chart data for online users per week
-      onlineUsersChartData = await logger.generateOnlineUsersChartData(
-        startDate,
-        endDate
-      );
+    const onlineUsersCount = (await statsModel.get(`newReply:${today}`)) || 0;
+    const conversationsCount =
+      (await statsModel.get(`newConversation:${today}`)) || 0;
+    const usersCount = (await statsModel.get(`newUser:${today}`)) || 0;
+    const blockedUsersCount =
+      (await statsModel.get(`blockedUsers:${today}`)) || 0;
 
-      // Retrieve counts from logs
-      const logCounts = await logger.getLogCounts();
-      onlineUsersCount = logCounts.onlineUsersCount;
-      conversationsCount = logCounts.conversationsCount;
-      usersCount = logCounts.usersCount;
-      blockedUsersCount = logCounts.blockedUsersCount;
-    } catch (error) {
-      console.error("Failed to generate chart data", error);
-      onlineUsersChartData = {
-        labels: [],
-        data: [],
-      };
-    }
+    const onlineUsersChartData = {
+      labels: [today],
+      data: [onlineUsersCount],
+    };
 
     return Response.json({
       chartData: onlineUsersChartData,
@@ -107,7 +94,6 @@ router.get(
     });
   }
 );
-
 
 /**
  * Define the bot webhook route.

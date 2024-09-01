@@ -1,16 +1,15 @@
 import { Bot } from "grammy";
 import { Environment, User } from "../types";
 import { KVModel } from "../utils/kv-storage";
-import Logger from "../utils/logs";
 import {
   handleBlockAction,
   handleReplyAction,
   handleUnblockAction,
 } from "./actions";
 import {
+  handleInboxCommand,
   handleMessage,
   handleStartCommand,
-  handleInboxCommand,
 } from "./commands";
 
 /**
@@ -27,8 +26,8 @@ export const createBot = (env: Environment) => {
     SECRET_TELEGRAM_API_TOKEN,
     NekonymousKV,
     BOT_INFO,
-    nekonymousr2,
     APP_SECURE_KEY,
+    INBOX_DO,
   } = env;
 
   // Initialize the bot with the provided API SECRET_TELEGRAM_API_TOKEN and bot information
@@ -40,9 +39,7 @@ export const createBot = (env: Environment) => {
   const userModel = new KVModel<User>("user", NekonymousKV);
   const conversationModel = new KVModel<string>("conversation", NekonymousKV);
   const userUUIDtoId = new KVModel<string>("userUUIDtoId", NekonymousKV);
-
-  // Initialize Logger
-  const logger = new Logger(nekonymousr2);
+  const statsModel = new KVModel<number>("stats", NekonymousKV);
 
   /**
    * Handles the /start command.
@@ -52,22 +49,7 @@ export const createBot = (env: Environment) => {
    * in the KV storage.
    */
   bot.command("start", (ctx) =>
-    handleStartCommand(ctx, userModel, userUUIDtoId, logger)
-  );
-
-  /**
-   * Handles the /inbpx command.
-   *
-  
-   */
-  bot.command("inbox", (ctx) =>
-    handleInboxCommand(
-      ctx,
-      userModel,
-      conversationModel,
-      logger,
-      APP_SECURE_KEY
-    )
+    handleStartCommand(ctx, userModel, userUUIDtoId, statsModel)
   );
 
   /**
@@ -78,9 +60,30 @@ export const createBot = (env: Environment) => {
    * the current context.
    */
   bot.on("message", (ctx) =>
-    handleMessage(ctx, userModel, conversationModel, logger, APP_SECURE_KEY)
+    handleMessage(
+      ctx,
+      userModel,
+      conversationModel,
+      INBOX_DO,
+      statsModel,
+      APP_SECURE_KEY
+    )
   );
 
+  /**
+   * Handles the /inbox command.
+   *
+  
+   */
+  bot.command("inbox", (ctx) =>
+    handleInboxCommand(
+      ctx,
+      userModel,
+      conversationModel,
+      INBOX_DO,
+      APP_SECURE_KEY
+    )
+  );
   /**
    * Handles reply actions from inline keyboard buttons.
    *
@@ -89,7 +92,13 @@ export const createBot = (env: Environment) => {
    * preparing the bot to receive the reply.
    */
   bot.callbackQuery(/^reply_(.+)$/, (ctx) =>
-    handleReplyAction(ctx, userModel, conversationModel, logger, APP_SECURE_KEY)
+    handleReplyAction(
+      ctx,
+      userModel,
+      conversationModel,
+      statsModel,
+      APP_SECURE_KEY
+    )
   );
 
   /**
@@ -99,7 +108,13 @@ export const createBot = (env: Environment) => {
    * their block list, preventing further communication until the block is removed.
    */
   bot.callbackQuery(/^block_(.+)$/, (ctx) =>
-    handleBlockAction(ctx, userModel, conversationModel, logger, APP_SECURE_KEY)
+    handleBlockAction(
+      ctx,
+      userModel,
+      conversationModel,
+      statsModel,
+      APP_SECURE_KEY
+    )
   );
 
   /**
@@ -113,7 +128,7 @@ export const createBot = (env: Environment) => {
       ctx,
       userModel,
       conversationModel,
-      logger,
+      statsModel,
       APP_SECURE_KEY
     )
   );

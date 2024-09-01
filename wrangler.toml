@@ -8,8 +8,15 @@ kv_namespaces = [
   { binding = "NekonymousKV", id = "de26a1b398614383a2b9702fafaa8824" },
 ]
 
-r2_buckets = [{ binding = "nekonymousr2", bucket_name = "nekonymousr2" }]
 [placement]
 mode = "smart"
 
 [vars]
+
+
+[durable_objects]
+bindings = [{ name = "INBOX_DO", class_name = "InboxDurableObject" }]
+
+[[migrations]]
+tag = "v1"                           # Increment this tag each time you make changes to Durable Objects
+new_classes = ["InboxDurableObject"]
