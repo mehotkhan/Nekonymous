@@ -68,7 +68,7 @@ export const handleReplyAction = async (
     }
     // Check rate limit
     const currentUser = await userModel.get(currentUserId.toString());
-    if (checkRateLimit(currentUser.lastMessage)) {
+    if (checkRateLimit(currentUser?.lastMessage)) {
       await ctx.reply(RATE_LIMIT_MESSAGE);
       return;
     }

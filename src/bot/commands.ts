@@ -85,16 +85,31 @@ export const handleStartCommand = async (
   } else if (typeof ctx.match === "string") {
     const otherUserUUID = ctx.match;
     const otherUserId = await userUUIDtoId.get(otherUserUUID);
-    const currentUser = await userModel.get(currentUserId.toString());
+    let currentUser = await userModel.get(currentUserId.toString());
+
+    if (!currentUser) {
+      const currentUserUUID = new WebUUID().toString();
+      await userUUIDtoId.save(currentUserUUID, currentUserId.toString());
+      await userModel.save(currentUserId.toString(), {
+        userUUID: currentUserUUID,
+        userName: ctx.from?.first_name ?? "بدون نام!",
+        blockList: [],
+        lastMessage: Date.now(),
+        currentConversation: {},
+      });
+      await incrementStat(statsModel, "newUser");
+      currentUser = await userModel.get(currentUserId.toString());
+    }
+
+    // Check rate limit
+    if (checkRateLimit(currentUser.lastMessage)) {
+      await ctx.reply(RATE_LIMIT_MESSAGE);
+      return;
+    }
 
     // disable self message
     if (otherUserId?.toString() === currentUserId.toString()) {
       await ctx.reply(SELF_MESSAGE_DISABLE_MESSAGE);
-      return;
-    }
-    // Check rate limit
-    if (checkRateLimit(currentUser.lastMessage)) {
-      await ctx.reply(RATE_LIMIT_MESSAGE);
       return;
     }
 
