@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "devDependencies": {
     "@eslint/js": "^9.9.1",
-    "@types/node": "^22.5.1",
+    "@types/node": "^22.5.2",
     "@typescript-eslint/eslint-plugin": "^8.3.0",
     "@typescript-eslint/parser": "^8.3.0",
     "eslint": "^9.9.1",
@@ -29,7 +29,7 @@
   "dependencies": {
     "@cloudflare/workers-types": "^4.20240821.1",
     "@noble/curves": "1.5.0",
-    "@noble/hashes": "^1.4.0",
+    "@noble/hashes": "^1.5.0",
     "grammy": "^1.29.0",
     "web-uuid": "0.1.0-pre.1"
   }
