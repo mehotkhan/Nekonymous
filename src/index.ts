@@ -58,7 +58,7 @@ router.get(
  * This will be used to update the chart data on the home page every 5 seconds.
  */
 router.get(
-  "/api/chart-data",
+  "/api/stats",
   async (request: Request, env: Environment, ctx: ExecutionContext) => {
     const statsModel = new KVModel<number>("stats", env.NekonymousKV);
 

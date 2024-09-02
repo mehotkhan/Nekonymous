@@ -9,8 +9,8 @@ export const HomePageContent = async (env: Environment) => {
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <div class="bg-blue-100 p-6 rounded-lg shadow-lg text-center">
-          <h2 class="text-xl font-bold text-blue-700 mb-2">کاربران آنلاین</h2>
-          <p id="onlineUsersCount" class="text-lg text-blue-600">
+          <h2 class="text-xl font-bold text-blue-700 mb-2">کاربران</h2>
+          <p id="usersCount" class="text-lg text-blue-600">
             در حال بارگذاری...
           </p>
         </div>
@@ -24,7 +24,7 @@ export const HomePageContent = async (env: Environment) => {
 
  
       <p class="text-lg leading-relaxed mb-4">
-        نِکونیموس ما به شما این امکان را می‌دهد که به صورت ناشناس و امن با دیگر
+        نِکونیموس  به شما این امکان را می‌دهد که به صورت ناشناس و امن با دیگر
         کاربران چت کنید. این ربات با استفاده از تکنولوژی‌های پیشرفته و رمزنگاری
         مدرن توسعه داده شده است تا حریم خصوصی شما را به بهترین نحو ممکن حفظ کند.
       </p>
@@ -60,7 +60,7 @@ export const HomePageContent = async (env: Environment) => {
 
         // Fetch initial data and set interval for periodic updates
         fetchData();
-        setInterval(fetchData, 5000); // Update the chart and stats every 10 seconds
+        // setInterval(fetchData, 5000); // Update the chart and stats every 10 seconds
       </script>
     </div>
   `;
