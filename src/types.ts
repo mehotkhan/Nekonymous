@@ -5,9 +5,11 @@ export interface User {
   userName: string;
   userUUID: string;
   blockList: number[];
+  lastMessage?: number;
   currentConversation?: {
     to?: number;
     reply_to_message_id?: number;
+    parent_message_id?: number;
   };
 }
 export interface InboxMessage {
@@ -22,6 +24,7 @@ export interface Conversation {
   connection: {
     from: number;
     to: number;
+    parent_message_id?: number;
     reply_to_message_id?: number;
   };
   payload: {

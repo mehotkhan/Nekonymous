@@ -20,9 +20,12 @@ export class InboxDurableObject implements DurableObject {
       await this.state.storage.put("inbox", inbox);
       return new Response("Message added to inbox", { status: 200 });
     }
-
+    if (method === "GET" && url.pathname === "/counter") {
+      const inbox =
+        (await this.state.storage.get<InboxMessage[]>("inbox")) || [];
+      return new Response(JSON.stringify(inbox), { status: 200 });
+    }
     if (method === "GET" && url.pathname === "/retrieve") {
-      console.log("get data");
       const inbox =
         (await this.state.storage.get<InboxMessage[]>("inbox")) || [];
       await this.state.storage.delete("inbox");

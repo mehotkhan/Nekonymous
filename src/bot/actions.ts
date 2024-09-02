@@ -1,17 +1,19 @@
 import { Context } from "grammy";
 import { Conversation, User } from "../types";
-import { createReplyKeyboard } from "../utils/constant";
+import { createMessageKeyboard } from "../utils/constant";
 import { KVModel } from "../utils/kv-storage";
 import { incrementStat } from "../utils/logs";
 import {
   HuhMessage,
   NoConversationFoundMessage,
+  RATE_LIMIT_MESSAGE,
   REPLAY_TO_MESSAGE,
   USER_BLOCKED_MESSAGE,
   USER_IS_BLOCKED_MESSAGE,
   USER_UNBLOCKED_MESSAGE,
 } from "../utils/messages";
 import { decryptPayload, getConversationId } from "../utils/ticket";
+import { checkRateLimit } from "../utils/tools";
 
 /**
  * Handles the reply action triggered from an inline keyboard.
@@ -55,7 +57,13 @@ export const handleReplyAction = async (
     const otherUser = await userModel.get(
       parentConversation.connection.from.toString()
     );
+    // check rate limit
+    const currentUser = await userModel.get(currentUserId.toString());
 
+    if (checkRateLimit(currentUser.lastMessage)) {
+      await ctx.reply(RATE_LIMIT_MESSAGE);
+      return;
+    }
     // Check if the other user has blocked the current user
     if (otherUser?.blockList.includes(currentUserId.toString())) {
       await ctx.reply(USER_IS_BLOCKED_MESSAGE);
@@ -65,7 +73,8 @@ export const handleReplyAction = async (
 
     const conversation = {
       to: parentConversation.connection.from,
-      reply_to_message_id: parentConversation.connection.reply_to_message_id,
+      parent_message_id: ctx.callbackQuery?.message?.message_id!,
+      reply_to_message_id: parentConversation.connection.parent_message_id,
     };
 
     await userModel.updateField(
@@ -75,7 +84,10 @@ export const handleReplyAction = async (
     );
 
     incrementStat(statsModel, "newConversation"); // Increment the reply stat
-    await ctx.reply(REPLAY_TO_MESSAGE);
+    await ctx.reply(REPLAY_TO_MESSAGE, {
+      reply_markup: { force_reply: true },
+      reply_to_message_id: ctx.callbackQuery?.message?.message_id!,
+    });
   } catch (error) {
     await ctx.reply(HuhMessage);
   } finally {
@@ -131,9 +143,10 @@ export const handleBlockAction = async (
 
     await incrementStat(statsModel, "blockedUsers"); // Increment the blocked user stat
 
-    await ctx.reply(USER_BLOCKED_MESSAGE);
-
-    const replyKeyboard = createReplyKeyboard(ticketId, true);
+    await ctx.api.sendMessage(currentUserId, USER_BLOCKED_MESSAGE, {
+      reply_to_message_id: ctx.callbackQuery?.message?.message_id!,
+    });
+    const replyKeyboard = createMessageKeyboard(ticketId, true);
     await ctx.api.editMessageReplyMarkup(
       ctx.chat?.id!,
       ctx.callbackQuery?.message?.message_id!,
@@ -202,9 +215,10 @@ export const handleUnblockAction = async (
 
       await incrementStat(statsModel, "unblockedUsers"); // Increment the unblocked user stat
 
-      await ctx.reply(USER_UNBLOCKED_MESSAGE);
-
-      const replyKeyboard = createReplyKeyboard(ticketId, false);
+      await ctx.api.sendMessage(currentUserId, USER_UNBLOCKED_MESSAGE, {
+        reply_to_message_id: ctx.callbackQuery?.message?.message_id!,
+      });
+      const replyKeyboard = createMessageKeyboard(ticketId, false);
       await ctx.api.editMessageReplyMarkup(
         ctx.chat?.id!,
         ctx.callbackQuery?.message?.message_id!,

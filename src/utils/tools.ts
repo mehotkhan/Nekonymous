@@ -1,3 +1,5 @@
+const RATE_LIMIT = 5; // seconds
+
 /**
  * Escapes special characters for Telegram's MarkdownV2 formatting.
  * This function ensures that any special characters in the input text are properly escaped
@@ -25,4 +27,23 @@ export const convertToPersianNumbers = (input: string | number): string => {
   return inputStr.replace(/\d/g, (char) =>
     String.fromCharCode(char.charCodeAt(0) + 1728)
   );
+};
+
+/**
+ * Checks if the user is sending messages too quickly.
+ * Alerts the user if they are within the rate limit threshold.
+ *
+ * @param lastMessage - The timestamp of the user's last message in milliseconds.
+ * @returns {boolean} - Returns true if the user is within the rate limit, otherwise false.
+ */
+export const checkRateLimit = (lastMessage: number): boolean => {
+  const currentTime = Date.now();
+  const timeDifference = currentTime - lastMessage;
+
+  // Check if the time difference is less than 4 seconds (4000 milliseconds)
+  if (timeDifference < RATE_LIMIT * 1000) {
+    return true; // Rate limit exceeded
+  }
+
+  return false; // Rate limit not exceeded
 };

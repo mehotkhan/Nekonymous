@@ -1,6 +1,5 @@
 export const WelcomeMessage = `
 سلام!
-(نسخه آزمایشی!)
 به نِکونیموس خوش آمدید.
 لینک ناشناس شما:
 UUID_USER_URL
@@ -9,7 +8,7 @@ UUID_USER_URL
 
 export const USER_LINK_MESSAGE = `
 لینک ناشناس شما:
-(نسخه آزمایشی!)
+ 
 UUID_USER_URL
 این لینک را با دیگران به اشتراک بگذارید تا بتوانید پیام‌های ناشناس دریافت کنید.
 `;
@@ -73,8 +72,6 @@ export const YOU_ARE_UNBLOCKED_MESSAGE = `
 
 export const ABOUT_PRIVACY_COMMAND_MESSAGE = `
 درباره نِکونیموس:
-(نسخه آزمایشی!)
-
 نِکونیموس یک ربات امن و ناشناس برای ارسال پیام‌های رمزنگاری شده است. این ربات به شما امکان می‌دهد تا با حفظ حریم خصوصی کامل و بدون افشای هویت خود با دیگران ارتباط برقرار کنید. نِکونیموس با استفاده از الگوریتم‌های رمزنگاری پیشرفته، امنیت تمامی مکالمات شما را تضمین می‌کند.
 
 ویژگی‌های نِکونیموس:
@@ -103,7 +100,7 @@ export const UnsupportedMessageTypeMessage = `
 `;
 
 export const NEW_INBOX_MESSAGE = `
-یک پیام ناشناس جدید دارید
+COUNT پیام ناشناس جدید دارید
 /inbox
 `;
 
@@ -114,4 +111,8 @@ export const EMPTY_INBOX_MESSAGE = `
 export const YOUR_MESSAGE_SEEN_MESSAGE = `
 پیام شما دیده شد!
 
+`;
+
+export const RATE_LIMIT_MESSAGE = `
+کمی آهسته تر :)
 `;

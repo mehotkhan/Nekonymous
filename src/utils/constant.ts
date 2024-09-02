@@ -56,7 +56,7 @@ export const handleMenuCommand = async (
  * @param {boolean} isBlocked - Indicates whether the user is currently blocked.
  * @returns {InlineKeyboard} - The generated inline keyboard.
  */
-export const createReplyKeyboard = (
+export const createMessageKeyboard = (
   ticketId: string,
   isBlocked: boolean
 ): InlineKeyboard =>

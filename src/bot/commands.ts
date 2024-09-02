@@ -3,7 +3,7 @@ import { Context } from "grammy";
 import { WebUUID } from "web-uuid";
 import { Conversation, InboxMessage, User } from "../types";
 import {
-  createReplyKeyboard,
+  createMessageKeyboard,
   handleMenuCommand,
   mainMenu,
 } from "../utils/constant";
@@ -15,6 +15,7 @@ import {
   MESSAGE_SENT_MESSAGE,
   NEW_INBOX_MESSAGE,
   NoUserFoundMessage,
+  RATE_LIMIT_MESSAGE,
   StartConversationMessage,
   USER_IS_BLOCKED_MESSAGE,
   WelcomeMessage,
@@ -27,6 +28,7 @@ import {
   generateTicketId,
   getConversationId,
 } from "../utils/ticket";
+import { checkRateLimit, convertToPersianNumbers } from "../utils/tools";
 
 /**
  * Handles the /start command to initiate or continue a user's interaction with the bot.
@@ -36,7 +38,6 @@ import {
  * @param {KVModel<User>} userModel - KVModel instance for managing user data.
  * @param {KVModel<string>} userUUIDtoId - KVModel instance for managing UUID to user ID mapping.
  * @param {KVModel<number>} statsModel - KVModel instance for storing stats.
- * @param {DurableObjectNamespace} inboxNamespace - Durable Object Namespace for inbox handling.
  */
 export const handleStartCommand = async (
   ctx: Context,
@@ -82,114 +83,33 @@ export const handleStartCommand = async (
   } else if (typeof ctx.match === "string") {
     const otherUserUUID = ctx.match;
     const otherUserId = await userUUIDtoId.get(otherUserUUID);
-
+    const currentUser = await userModel.get(currentUserId.toString());
+    // check rate limit
+    if (checkRateLimit(currentUser.lastMessage)) {
+      await ctx.reply(RATE_LIMIT_MESSAGE);
+      return;
+    }
     if (otherUserId) {
       const otherUser = await userModel.get(otherUserId);
-      if (otherUser?.blockList.includes(currentUserId)) {
+
+      if (otherUser?.blockList.includes(currentUserId.toString())) {
         await ctx.reply(USER_IS_BLOCKED_MESSAGE);
         return;
       }
 
+      const newConversation = await ctx.reply(
+        StartConversationMessage.replace("USER_NAME", otherUser.userName!)
+      );
       await userModel.updateField(
         currentUserId.toString(),
         "currentConversation",
-        { to: otherUserId }
-      );
-      await ctx.reply(
-        StartConversationMessage.replace("USER_NAME", otherUser.userName!)
+        { to: otherUserId, parent_message_id: newConversation.message_id }
       );
     } else {
       await ctx.reply(NoUserFoundMessage);
     }
   } else {
     await ctx.reply(HuhMessage, {
-      reply_markup: mainMenu,
-    });
-  }
-};
-
-/**
- * Handles the /inbox command, retrieving and displaying messages from the user's inbox.
- *
- * @param {Context} ctx - The context of the current Telegram update.
- * @param {KVModel<User>} userModel - KVModel instance for managing user data.
- * @param {KVModel<string>} conversationModel - KVModel instance for managing conversation data.
- * @param {DurableObjectNamespace} inboxNamespace - Durable Object Namespace for inbox handling.
- * @param {string} APP_SECURE_KEY - The application-specific secure key.
- */
-
-export const handleInboxCommand = async (
-  ctx: Context,
-  userModel: KVModel<User>,
-  conversationModel: KVModel<string>,
-  inboxNamespace: DurableObjectNamespace,
-  APP_SECURE_KEY: string
-): Promise<void> => {
-  const currentUserId = ctx.from?.id!;
-
-  try {
-    // Fetch the Durable Object associated with this user's inbox
-    const inboxId = inboxNamespace.idFromName(currentUserId.toString());
-    const inboxStub = inboxNamespace.get(inboxId);
-
-    const response = await inboxStub.fetch("https://inbox/retrieve");
-
-    const inbox: InboxMessage[] = await response.json();
-    if (inbox.length > 0) {
-      for (const { ticketId, timestamp } of inbox) {
-        try {
-          const conversationId = getConversationId(ticketId, APP_SECURE_KEY);
-          const conversationData = await conversationModel.get(conversationId);
-          const decryptedMessage: Conversation = JSON.parse(
-            await decryptPayload(ticketId, conversationData!, APP_SECURE_KEY)
-          );
-
-          const otherUser = await userModel.get(
-            decryptedMessage.connection.from.toString()
-          );
-          const isBlocked = !!otherUser?.blockList.some(
-            (item: number) => item === currentUserId
-          );
-
-          const replyOptions: any = {
-            reply_markup: createReplyKeyboard(ticketId, isBlocked),
-          };
-
-          if (decryptedMessage.connection.reply_to_message_id) {
-            replyOptions.reply_to_message_id =
-              decryptedMessage.connection.reply_to_message_id;
-          }
-
-          await sendDecryptedMessage(ctx, decryptedMessage, replyOptions);
-          await ctx.api.sendMessage(
-            decryptedMessage.connection.from,
-            YOUR_MESSAGE_SEEN_MESSAGE
-          );
-
-          // Clear payload data in the conversation to minimize storage
-          const clearedConversation = {
-            connection: decryptedMessage.connection,
-            payload: {}, // Clear the payload after sending the message
-          };
-          const clearedConversationData = await encryptedPayload(
-            ticketId,
-            JSON.stringify(clearedConversation),
-            APP_SECURE_KEY
-          );
-          await conversationModel.save(conversationId, clearedConversationData);
-        } catch (error) {
-          await ctx.reply(HuhMessage + JSON.stringify(error), {
-            reply_markup: mainMenu,
-          });
-        }
-      }
-    } else {
-      await ctx.reply(EMPTY_INBOX_MESSAGE, {
-        reply_markup: mainMenu,
-      });
-    }
-  } catch (error) {
-    await ctx.reply(HuhMessage + JSON.stringify(error), {
       reply_markup: mainMenu,
     });
   }
@@ -236,8 +156,9 @@ export const handleMessage = async (
       connection: {
         from: currentUserId,
         to: currentUser.currentConversation.to,
+        parent_message_id: ctx.message?.message_id,
         reply_to_message_id:
-          currentUser.currentConversation.reply_to_message_id!,
+          currentUser.currentConversation.reply_to_message_id,
       },
       payload: {},
     };
@@ -302,21 +223,123 @@ export const handleMessage = async (
       method: "POST",
       body: JSON.stringify({ timestamp: Date.now(), ticketId }),
     });
+
+    const counter = await inboxStub.fetch("https://inbox/counter");
+    const inbox: InboxMessage[] = await counter.json();
+
+    // Notify the user
+    await ctx.reply(MESSAGE_SENT_MESSAGE, {
+      reply_to_message_id: conversation.connection.parent_message_id,
+    });
+    await ctx.api.sendMessage(
+      currentUser.currentConversation.to,
+      NEW_INBOX_MESSAGE.replace("COUNT", convertToPersianNumbers(inbox.length))
+    );
+
     // Clear current conversation for the user
     await userModel.updateField(
       currentUserId.toString(),
       "currentConversation",
       undefined
     );
-
-    // Notify the user
-    await ctx.reply(MESSAGE_SENT_MESSAGE);
-    await ctx.api.sendMessage(
-      currentUser.currentConversation.to,
-      NEW_INBOX_MESSAGE
+    // update rate limit
+    await userModel.updateField(
+      currentUserId.toString(),
+      "lastMessage",
+      Date.now()
     );
-
     await incrementStat(statsModel, "newConversation"); // Increment the reply stat
+  } catch (error) {
+    await ctx.reply(HuhMessage, {
+      reply_markup: mainMenu,
+    });
+  }
+};
+
+/**
+ * Handles the /inbox command, retrieving and displaying messages from the user's inbox.
+ *
+ * @param {Context} ctx - The context of the current Telegram update.
+ * @param {KVModel<User>} userModel - KVModel instance for managing user data.
+ * @param {KVModel<string>} conversationModel - KVModel instance for managing conversation data.
+ * @param {DurableObjectNamespace} inboxNamespace - Durable Object Namespace for inbox handling.
+ * @param {string} APP_SECURE_KEY - The application-specific secure key.
+ */
+
+export const handleInboxCommand = async (
+  ctx: Context,
+  userModel: KVModel<User>,
+  conversationModel: KVModel<string>,
+  inboxNamespace: DurableObjectNamespace,
+  APP_SECURE_KEY: string
+): Promise<void> => {
+  const currentUserId = ctx.from?.id!;
+
+  try {
+    // Fetch the Durable Object associated with this user's inbox
+    const inboxId = inboxNamespace.idFromName(currentUserId.toString());
+    const inboxStub = inboxNamespace.get(inboxId);
+
+    const response = await inboxStub.fetch("https://inbox/retrieve");
+
+    const inbox: InboxMessage[] = await response.json();
+    if (inbox.length > 0) {
+      for (const { ticketId, timestamp } of inbox) {
+        try {
+          const conversationId = getConversationId(ticketId, APP_SECURE_KEY);
+          const conversationData = await conversationModel.get(conversationId);
+          const decryptedMessage: Conversation = JSON.parse(
+            await decryptPayload(ticketId, conversationData!, APP_SECURE_KEY)
+          );
+
+          const otherUser = await userModel.get(
+            decryptedMessage.connection.from.toString()
+          );
+          const isBlocked = !!otherUser?.blockList.some(
+            (item: number) => item === currentUserId
+          );
+
+          const replyOptions: any = {
+            reply_markup: createMessageKeyboard(ticketId, isBlocked),
+          };
+
+          if (decryptedMessage.connection.reply_to_message_id) {
+            replyOptions.reply_to_message_id =
+              decryptedMessage.connection.reply_to_message_id;
+          }
+
+          await sendDecryptedMessage(ctx, decryptedMessage, replyOptions);
+          await ctx.api.sendMessage(
+            decryptedMessage.connection.from,
+            YOUR_MESSAGE_SEEN_MESSAGE,
+            {
+              reply_to_message_id:
+                decryptedMessage.connection.parent_message_id,
+            }
+          );
+
+          // Clear payload data in the conversation to minimize storage
+          const clearedConversation = {
+            connection: decryptedMessage.connection,
+            payload: {}, // Clear the payload after sending the message
+          };
+          const clearedConversationData = await encryptedPayload(
+            ticketId,
+            JSON.stringify(clearedConversation),
+            APP_SECURE_KEY
+          );
+          await conversationModel.save(conversationId, clearedConversationData);
+        } catch (error) {
+          await ctx.reply(HuhMessage + JSON.stringify(error), {
+            reply_markup: mainMenu,
+          });
+        }
+      }
+    } else {
+      await ctx.reply(EMPTY_INBOX_MESSAGE, {
+        reply_markup: mainMenu,
+      });
+    }
   } catch (error) {
     await ctx.reply(HuhMessage + JSON.stringify(error), {
       reply_markup: mainMenu,
