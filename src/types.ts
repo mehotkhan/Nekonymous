@@ -10,13 +10,11 @@ export interface User {
     reply_to_message_id?: number;
   };
 }
-export interface Inbox {
-  updated: number;
-  items: {
-    timestamp: string;
-    ticketId: string;
-  }[];
+export interface InboxMessage {
+  timestamp: number;
+  ticketId: string;
 }
+
 /**
  * Interface representing a Conversation between two users.
  */

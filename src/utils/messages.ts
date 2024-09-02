@@ -110,3 +110,8 @@ export const NEW_INBOX_MESSAGE = `
 export const EMPTY_INBOX_MESSAGE = `
 پیام ناخوانده ندارید 
 `;
+
+export const YOUR_MESSAGE_SEEN_MESSAGE = `
+پیام شما دیده شد!
+
+`;

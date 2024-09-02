@@ -53,6 +53,21 @@ export const createBot = (env: Environment) => {
   );
 
   /**
+   * Handles the /inbox command.
+   *
+  
+   */
+  bot.command("inbox", (ctx) =>
+    handleInboxCommand(
+      ctx,
+      userModel,
+      conversationModel,
+      INBOX_DO,
+      APP_SECURE_KEY
+    )
+  );
+
+  /**
    * Handles incoming messages.
    *
    * This handler processes any text or media message sent by users, manages
@@ -70,20 +85,6 @@ export const createBot = (env: Environment) => {
     )
   );
 
-  /**
-   * Handles the /inbox command.
-   *
-  
-   */
-  bot.command("inbox", (ctx) =>
-    handleInboxCommand(
-      ctx,
-      userModel,
-      conversationModel,
-      INBOX_DO,
-      APP_SECURE_KEY
-    )
-  );
   /**
    * Handles reply actions from inline keyboard buttons.
    *

@@ -2,6 +2,7 @@ import { Context } from "grammy";
 import { Conversation, User } from "../types";
 import { createReplyKeyboard } from "../utils/constant";
 import { KVModel } from "../utils/kv-storage";
+import { incrementStat } from "../utils/logs";
 import {
   HuhMessage,
   NoConversationFoundMessage,
@@ -73,7 +74,7 @@ export const handleReplyAction = async (
       conversation
     );
 
-    await incrementStat(statsModel, "newReply"); // Increment the reply stat
+    incrementStat(statsModel, "newConversation"); // Increment the reply stat
     await ctx.reply(REPLAY_TO_MESSAGE);
   } catch (error) {
     await ctx.reply(HuhMessage);

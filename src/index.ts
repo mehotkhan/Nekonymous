@@ -1,10 +1,10 @@
 import { DurableObjectNamespace } from "@cloudflare/workers-types";
 import { webhookCallback } from "grammy";
 import { createBot } from "./bot/bot";
+import { InboxDurableObject } from "./bot/inboxDU";
 import { AboutPageContent } from "./front/about";
 import { HomePageContent } from "./front/home";
 import pageLayout from "./front/layout";
-import { InboxDurableObject } from "./inboxDU";
 import { KVModel } from "./utils/kv-storage";
 import { Router } from "./utils/router";
 import { convertToPersianNumbers } from "./utils/tools";
@@ -73,24 +73,13 @@ router.get(
 
     const today = new Date().toISOString().split("T")[0];
 
-    const onlineUsersCount = (await statsModel.get(`newReply:${today}`)) || 0;
     const conversationsCount =
       (await statsModel.get(`newConversation:${today}`)) || 0;
     const usersCount = (await statsModel.get(`newUser:${today}`)) || 0;
-    const blockedUsersCount =
-      (await statsModel.get(`blockedUsers:${today}`)) || 0;
-
-    const onlineUsersChartData = {
-      labels: [today],
-      data: [onlineUsersCount],
-    };
 
     return Response.json({
-      chartData: onlineUsersChartData,
-      onlineUsersCount: convertToPersianNumbers(onlineUsersCount),
       conversationsCount: convertToPersianNumbers(conversationsCount),
       usersCount: convertToPersianNumbers(usersCount),
-      blockedUsersCount: convertToPersianNumbers(blockedUsersCount),
     });
   }
 );

@@ -22,21 +22,7 @@ export const HomePageContent = async (env: Environment) => {
         </div>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <div class="bg-purple-100 p-6 rounded-lg shadow-lg text-center">
-          <h2 class="text-xl font-bold text-purple-700 mb-2">کاربران فعال</h2>
-          <p id="usersCount" class="text-lg text-purple-600">
-            در حال بارگذاری...
-          </p>
-        </div>
-        <div class="bg-red-100 p-6 rounded-lg shadow-lg text-center">
-          <h2 class="text-xl font-bold text-red-700 mb-2">کاربران بلاک شده</h2>
-          <p id="blockedUsersCount" class="text-lg text-red-600">
-            در حال بارگذاری...
-          </p>
-        </div>
-      </div>
-      
+ 
       <p class="text-lg leading-relaxed mb-4">
         نِکونیموس ما به شما این امکان را می‌دهد که به صورت ناشناس و امن با دیگر
         کاربران چت کنید. این ربات با استفاده از تکنولوژی‌های پیشرفته و رمزنگاری
@@ -55,69 +41,18 @@ export const HomePageContent = async (env: Environment) => {
           شروع به استفاده از ربات
         </a>
       </div>
-      <canvas id="onlineUsersChart" class="mb-8 border-t w-full"></canvas>
-      <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
       <script>
-        const ctx = document
-          .getElementById("onlineUsersChart")
-          .getContext("2d");
-        let myChart;
-
+  
         async function fetchData() {
           try {
-            const response = await fetch("/api/chart-data");
+            const response = await fetch("/api/stats");
             const data = await response.json();
-
-            document.getElementById("onlineUsersCount").textContent =
-              data.onlineUsersCount + " نفر";
+ 
             document.getElementById("conversationsCount").textContent =
               data.conversationsCount + " مکالمه";
             document.getElementById("usersCount").textContent =
               data.usersCount + " نفر";
-            document.getElementById("blockedUsersCount").textContent =
-              data.blockedUsersCount + " نفر";
-
-            const chartData = {
-              labels: data.chartData.labels,
-              datasets: [
-                {
-                  label: "کاربران آنلاین(هفت روز گذشته)",
-                  data: data.chartData.data,
-                  fill: false,
-                  borderColor: "rgba(75, 192, 192, 1)",
-                  tension: 0.1,
-                },
-              ],
-            };
-
-            if (!myChart) {
-              myChart = new Chart(ctx, {
-                type: "line",
-                data: chartData,
-                options: {
-                  responsive: true,
-                  scales: {
-                    x: {
-                      title: {
-                        display: true,
-                        text: "Date",
-                      },
-                    },
-                    y: {
-                      title: {
-                        display: true,
-                        text: "Online Users",
-                      },
-                      beginAtZero: true,
-                    },
-                  },
-                },
-              });
-            } else {
-              myChart.data.labels = chartData.labels;
-              myChart.data.datasets[0].data = chartData.datasets[0].data;
-              myChart.update();
-            }
+  
           } catch (error) {
             console.error("Error fetching chart data:", error);
           }
@@ -125,7 +60,7 @@ export const HomePageContent = async (env: Environment) => {
 
         // Fetch initial data and set interval for periodic updates
         fetchData();
-        setInterval(fetchData, 10000); // Update the chart and stats every 10 seconds
+        setInterval(fetchData, 5000); // Update the chart and stats every 10 seconds
       </script>
     </div>
   `;
