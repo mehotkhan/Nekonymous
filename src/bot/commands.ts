@@ -145,6 +145,7 @@ export const handleStartCommand = async (
  * @param {Context} ctx - The context of the current Telegram update.
  * @param {KVModel<User>} userModel - KVModel instance for managing user data.
  * @param {KVModel<string>} conversationModel - KVModel instance for managing conversation data.
+ * @param {KVModel<string>} userUUIDtoId - KVModel instance for managing UUID to user ID mapping.
  * @param {DurableObjectNamespace} inboxNamespace - Durable Object Namespace for inbox handling.
  * @param {KVModel<number>} statsModel - KVModel instance for storing stats.
  * @param {string} APP_SECURE_KEY - The application-specific secure key.
@@ -153,13 +154,27 @@ export const handleMessage = async (
   ctx: Context,
   userModel: KVModel<User>,
   conversationModel: KVModel<string>,
+  userUUIDtoId: KVModel<string>,
   inboxNamespace: DurableObjectNamespace,
   statsModel: KVModel<number>,
   APP_SECURE_KEY: string
 ): Promise<void> => {
   const currentUserId = ctx.from?.id!;
-  const currentUser = await userModel.get(currentUserId.toString());
+  let currentUser = await userModel.get(currentUserId.toString());
 
+  if (!currentUser) {
+    const currentUserUUID = new WebUUID().toString();
+    await userUUIDtoId.save(currentUserUUID, currentUserId.toString());
+    await userModel.save(currentUserId.toString(), {
+      userUUID: currentUserUUID,
+      userName: ctx.from?.first_name ?? "بدون نام!",
+      blockList: [],
+      lastMessage: Date.now(),
+      currentConversation: {},
+    });
+    await incrementStat(statsModel, "newUser");
+    currentUser = await userModel.get(currentUserId.toString());
+  }
   const isMenuCommandHandled = await handleMenuCommand(
     ctx,
     currentUser?.userUUID || ""

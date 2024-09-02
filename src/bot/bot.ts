@@ -79,6 +79,7 @@ export const createBot = (env: Environment) => {
       ctx,
       userModel,
       conversationModel,
+      userUUIDtoId,
       INBOX_DO,
       statsModel,
       APP_SECURE_KEY
