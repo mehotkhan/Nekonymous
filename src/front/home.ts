@@ -1,6 +1,50 @@
 import { Environment } from "../types";
+import { KVModel } from "../utils/kv-storage";
+import { convertToPersianNumbers } from "../utils/tools";
 
 export const HomePageContent = async (env: Environment) => {
+  const statsModel = new KVModel<number>("stats", env.NekonymousKV);
+
+  // GitHub repository information
+  const githubOwner = "mehotkhan";
+  const githubRepo = "Nekonymous";
+  const githubUrl = `https://github.com/${githubOwner}/${githubRepo}`;
+
+  let commitHash = "N/A";
+  let commitDate = "N/A";
+  let commitMessage = "N/A";
+  let commitUrl = githubUrl;
+  let conversationsCount = "";
+  let usersCount = "";
+
+  const today = new Date().toISOString().split("T")[0];
+
+  conversationsCount = convertToPersianNumbers(
+    (await statsModel.get(`newConversation:${today}`)) || 0
+  );
+  usersCount = convertToPersianNumbers(
+    (await statsModel.get(`newUser:${today}`)) || 0
+  );
+
+  // Fetch the latest commit from GitHub
+  const commitInfo = await fetch(
+    `https://api.github.com/repos/${githubOwner}/${githubRepo}/commits/master`,
+    {
+      headers: {
+        "User-Agent": "Cloudflare Worker",
+        Accept: "application/vnd.github.v3+json",
+      },
+    }
+  );
+
+  if (commitInfo.ok) {
+    const commitData = await commitInfo.json();
+    commitHash = commitData.sha.substring(0, 7); // Shortened commit hash
+    commitDate = new Date(commitData.commit.author.date).toLocaleDateString();
+    commitMessage = commitData.commit.message.split("\n")[0]; // Extract first line of commit message
+    commitUrl = commitData.html_url; // URL to the specific commit on GitHub
+  }
+
   return `
     <div class="max-w-4xl mx-auto p-6">
       <h1 class="text-3xl font-bold text-center mb-8">
@@ -10,19 +54,18 @@ export const HomePageContent = async (env: Environment) => {
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <div class="bg-blue-100 p-6 rounded-lg shadow-lg text-center">
           <h2 class="text-xl font-bold text-blue-700 mb-2">کاربران</h2>
-          <p id="usersCount" class="text-lg text-blue-600">
-            در حال بارگذاری...
+          <p   class="text-lg text-blue-600">
+            ${usersCount}
           </p>
         </div>
         <div class="bg-green-100 p-6 rounded-lg shadow-lg text-center">
           <h2 class="text-xl font-bold text-green-700 mb-2">تعداد مکالمات</h2>
-          <p id="conversationsCount" class="text-lg text-green-600">
-            در حال بارگذاری...
+          <p  class="text-lg text-green-600">
+           ${conversationsCount}
           </p>
         </div>
       </div>
 
- 
       <p class="text-lg leading-relaxed mb-4">
         نِکونیموس  به شما این امکان را می‌دهد که به صورت ناشناس و امن با دیگر
         کاربران چت کنید. این ربات با استفاده از تکنولوژی‌های پیشرفته و رمزنگاری
@@ -41,27 +84,17 @@ export const HomePageContent = async (env: Environment) => {
           شروع به استفاده از ربات
         </a>
       </div>
-      <script>
-  
-        async function fetchData() {
-          try {
-            const response = await fetch("/api/stats");
-            const data = await response.json();
- 
-            document.getElementById("conversationsCount").textContent =
-              data.conversationsCount + " مکالمه";
-            document.getElementById("usersCount").textContent =
-              data.usersCount + " نفر";
-  
-          } catch (error) {
-            console.error("Error fetching chart data:", error);
-          }
-        }
 
-        // Fetch initial data and set interval for periodic updates
-        fetchData();
-        // setInterval(fetchData, 5000); // Update the chart and stats every 10 seconds
-      </script>
+      <!-- Footer Section -->
+      <footer class="text-center mt-10 border-t pt-4">
+       <p class="text-sm text-gray-600">
+          <a href="${githubUrl}" class="underline">GitHub Repository</a> | 
+          <a href="${commitUrl}" class="underline">Latest Commit: ${commitHash} on ${commitDate}</a><br />
+          Commit Message: ${commitMessage}
+        </p>
+      </footer>
+
+ 
     </div>
   `;
 };

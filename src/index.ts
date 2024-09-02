@@ -5,9 +5,7 @@ import { AboutPageContent } from "./front/about";
 import { HomePageContent } from "./front/home";
 import pageLayout from "./front/layout";
 import { Environment } from "./types";
-import { KVModel } from "./utils/kv-storage";
 import { Router } from "./utils/router";
-import { convertToPersianNumbers } from "./utils/tools";
 
 // INBOX DURABLE OBJECTS
 export { InboxDurableObject };
@@ -50,28 +48,6 @@ router.get(
     // return new HTMLResponse(
     //   pageLayout("درباره", env.BOT_NAME, AboutPageContent)
     // );
-  }
-);
-
-/**
- * API endpoint to get chart data in JSON format.
- * This will be used to update the chart data on the home page every 5 seconds.
- */
-router.get(
-  "/api/stats",
-  async (request: Request, env: Environment, ctx: ExecutionContext) => {
-    const statsModel = new KVModel<number>("stats", env.NekonymousKV);
-
-    const today = new Date().toISOString().split("T")[0];
-
-    const conversationsCount =
-      (await statsModel.get(`newConversation:${today}`)) || 0;
-    const usersCount = (await statsModel.get(`newUser:${today}`)) || 0;
-
-    return Response.json({
-      conversationsCount: convertToPersianNumbers(conversationsCount),
-      usersCount: convertToPersianNumbers(usersCount),
-    });
   }
 );
 
