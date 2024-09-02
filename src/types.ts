@@ -42,10 +42,10 @@ export interface Conversation {
 /**
  * Interface representing the Environment variables used in the bot.
  */
+
 export interface Environment {
   SECRET_TELEGRAM_API_TOKEN: string;
   NekonymousKV: KVNamespace;
-  nekonymousr2: R2Bucket;
   BOT_INFO: string;
   BOT_NAME: string;
   APP_SECURE_KEY: string;

@@ -1,25 +1,16 @@
-import { DurableObjectNamespace } from "@cloudflare/workers-types";
 import { webhookCallback } from "grammy";
 import { createBot } from "./bot/bot";
 import { InboxDurableObject } from "./bot/inboxDU";
 import { AboutPageContent } from "./front/about";
 import { HomePageContent } from "./front/home";
 import pageLayout from "./front/layout";
+import { Environment } from "./types";
 import { KVModel } from "./utils/kv-storage";
 import { Router } from "./utils/router";
 import { convertToPersianNumbers } from "./utils/tools";
 
 // INBOX DURABLE OBJECTS
 export { InboxDurableObject };
-
-export interface Environment {
-  SECRET_TELEGRAM_API_TOKEN: string;
-  NekonymousKV: KVNamespace;
-  BOT_INFO: string;
-  BOT_NAME: string;
-  APP_SECURE_KEY: string;
-  INBOX_DO: DurableObjectNamespace;
-}
 
 // Initialize a Router instance for handling different routes
 const router = new Router();
