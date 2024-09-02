@@ -8,6 +8,7 @@ import {
   NoConversationFoundMessage,
   RATE_LIMIT_MESSAGE,
   REPLAY_TO_MESSAGE,
+  SELF_MESSAGE_DISABLE_MESSAGE,
   USER_BLOCKED_MESSAGE,
   USER_IS_BLOCKED_MESSAGE,
   USER_UNBLOCKED_MESSAGE,
@@ -17,7 +18,6 @@ import { checkRateLimit } from "../utils/tools";
 
 /**
  * Handles the reply action triggered from an inline keyboard.
- *
  * This function manages the process when a user clicks on the "reply" button in an inline keyboard.
  * It verifies the conversation context and initiates a reply by linking it to the correct conversation.
  *
@@ -37,6 +37,7 @@ export const handleReplyAction = async (
   const ticketId = ctx.match[1];
   const currentUserId = ctx.from?.id!;
 
+  // Retrieve the conversation data
   const conversationId = getConversationId(ticketId, APP_SECURE_KEY);
   const conversationData = await conversationModel.get(conversationId);
 
@@ -57,13 +58,21 @@ export const handleReplyAction = async (
     const otherUser = await userModel.get(
       parentConversation.connection.from.toString()
     );
-    // check rate limit
-    const currentUser = await userModel.get(currentUserId.toString());
 
+    // disable self message
+    if (
+      parentConversation.connection.from.toString() === currentUserId.toString()
+    ) {
+      await ctx.reply(SELF_MESSAGE_DISABLE_MESSAGE);
+      return;
+    }
+    // Check rate limit
+    const currentUser = await userModel.get(currentUserId.toString());
     if (checkRateLimit(currentUser.lastMessage)) {
       await ctx.reply(RATE_LIMIT_MESSAGE);
       return;
     }
+
     // Check if the other user has blocked the current user
     if (otherUser?.blockList.includes(currentUserId.toString())) {
       await ctx.reply(USER_IS_BLOCKED_MESSAGE);
@@ -77,13 +86,16 @@ export const handleReplyAction = async (
       reply_to_message_id: parentConversation.connection.parent_message_id,
     };
 
+    // Update the user's current conversation
     await userModel.updateField(
       currentUserId.toString(),
       "currentConversation",
       conversation
     );
 
-    incrementStat(statsModel, "newConversation"); // Increment the reply stat
+    // Increment the reply stat
+    incrementStat(statsModel, "newConversation");
+
     await ctx.reply(REPLAY_TO_MESSAGE, {
       reply_markup: { force_reply: true },
       reply_to_message_id: ctx.callbackQuery?.message?.message_id!,
@@ -97,7 +109,6 @@ export const handleReplyAction = async (
 
 /**
  * Handles the block action triggered from an inline keyboard.
- *
  * This function adds a user to the block list when the "block" button is clicked.
  * It ensures that further communication from the blocked user is prevented until they are unblocked.
  *
@@ -117,6 +128,7 @@ export const handleBlockAction = async (
   const ticketId = ctx.match[1];
   const currentUserId = ctx.from?.id!;
 
+  // Retrieve the conversation data
   const conversationId = getConversationId(ticketId, APP_SECURE_KEY);
   const conversationData = await conversationModel.get(conversationId);
 
@@ -134,6 +146,7 @@ export const handleBlockAction = async (
   const parentConversation: Conversation = JSON.parse(rawConversation);
 
   try {
+    // Block the user
     await userModel.updateField(
       currentUserId.toString(),
       "blockList",
@@ -141,11 +154,15 @@ export const handleBlockAction = async (
       true
     );
 
-    await incrementStat(statsModel, "blockedUsers"); // Increment the blocked user stat
+    // Increment the blocked user stat
+    await incrementStat(statsModel, "blockedUsers");
 
+    // Send confirmation to the user
     await ctx.api.sendMessage(currentUserId, USER_BLOCKED_MESSAGE, {
       reply_to_message_id: ctx.callbackQuery?.message?.message_id!,
     });
+
+    // Update the reply markup to reflect the block
     const replyKeyboard = createMessageKeyboard(ticketId, true);
     await ctx.api.editMessageReplyMarkup(
       ctx.chat?.id!,
@@ -163,7 +180,6 @@ export const handleBlockAction = async (
 
 /**
  * Handles the unblock action triggered from an inline keyboard.
- *
  * This function removes a user from the block list when the "unblock" button is clicked,
  * allowing communication to resume between the two users.
  *
@@ -183,6 +199,7 @@ export const handleUnblockAction = async (
   const ticketId = ctx.match[1];
   const currentUserId = ctx.from?.id!;
 
+  // Retrieve the conversation data
   const conversationId = getConversationId(ticketId, APP_SECURE_KEY);
   const conversationData = await conversationModel.get(conversationId);
 
@@ -207,17 +224,22 @@ export const handleUnblockAction = async (
         parentConversation.connection.from.toString()
       )
     ) {
+      // Unblock the user
       await userModel.popItemFromField(
         currentUserId.toString(),
         "blockList",
         parentConversation.connection.from.toString()
       );
 
-      await incrementStat(statsModel, "unblockedUsers"); // Increment the unblocked user stat
+      // Increment the unblocked user stat
+      await incrementStat(statsModel, "unblockedUsers");
 
+      // Send confirmation to the user
       await ctx.api.sendMessage(currentUserId, USER_UNBLOCKED_MESSAGE, {
         reply_to_message_id: ctx.callbackQuery?.message?.message_id!,
       });
+
+      // Update the reply markup to reflect the unblock
       const replyKeyboard = createMessageKeyboard(ticketId, false);
       await ctx.api.editMessageReplyMarkup(
         ctx.chat?.id!,

@@ -61,30 +61,6 @@ export class KVModel<T extends Record<string, any>> {
   }
 
   /**
-   * Deletes a record by ID from KV storage.
-   *
-   * @param {string} id - The unique identifier for the record.
-   * @returns {Promise<void>} - A promise that resolves when the operation completes.
-   */
-  async delete(id: string): Promise<void> {
-    const key = this.generateKey(id);
-    await this.kv.delete(key);
-  }
-
-  /**
-   * Counts the number of records in the namespace, or those matching an optional prefix.
-   *
-   * @param {string} [extra] - Optional prefix to limit which records are counted.
-   * @returns {Promise<number>} - The number of matching records.
-   */
-  async count(extra?: string): Promise<number> {
-    const keys = await this.kv.list({
-      prefix: extra ? `${this.namespace}:${extra}:` : `${this.namespace}:`,
-    });
-    return keys.keys.length;
-  }
-
-  /**
    * Updates a specific field in the stored record. If the field is an array, this method
    * allows you to push a new item into that array.
    *

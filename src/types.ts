@@ -48,6 +48,7 @@ export interface Conversation {
 
 export interface Environment {
   SECRET_TELEGRAM_API_TOKEN: string;
+  BOT_SECRET_KEY: string;
   NekonymousKV: KVNamespace;
   BOT_INFO: string;
   BOT_NAME: string;

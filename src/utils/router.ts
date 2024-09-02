@@ -56,11 +56,43 @@ export class Router {
     for (const route of this.routes) {
       const match = pathname.match(route.path);
       if (match && method === route.method) {
-        return route.handler(request, env, ctx);
+        // Pass the matched parameters to the handler
+        const params = match.slice(1);
+        return this.safeHandle(route.handler, request, env, ctx, params);
       }
     }
 
     // Return 404 if no route matches
     return new Response("Not Found", { status: 404 });
+  }
+
+  /**
+   * Safely handles a request by sanitizing input parameters to prevent XSS attacks.
+   * @param handler The route handler function.
+   * @param request The incoming Request object.
+   * @param env The environment bindings.
+   * @param ctx The execution context.
+   * @param params The matched route parameters.
+   * @returns A Response object or a Promise that resolves to a Response.
+   */
+  private async safeHandle(
+    handler: Handler,
+    request: Request,
+    env: Record<string, any>,
+    ctx: ExecutionContext,
+    params: string[]
+  ): Promise<Response> {
+    // Sanitize the params to prevent XSS
+    const sanitizedParams = params.map(this.sanitizeInput);
+    return handler(request, env, ctx, ...sanitizedParams);
+  }
+
+  /**
+   * Sanitizes input to prevent XSS attacks.
+   * @param input The input string to sanitize.
+   * @returns The sanitized string.
+   */
+  private sanitizeInput(input: string): string {
+    return input.replace(/</g, "&lt;").replace(/>/g, "&gt;");
   }
 }

@@ -16,12 +16,13 @@ import {
   NEW_INBOX_MESSAGE,
   NoUserFoundMessage,
   RATE_LIMIT_MESSAGE,
+  SELF_MESSAGE_DISABLE_MESSAGE,
   StartConversationMessage,
   USER_IS_BLOCKED_MESSAGE,
   WelcomeMessage,
   YOUR_MESSAGE_SEEN_MESSAGE,
 } from "../utils/messages";
-import { sendDecryptedMessage } from "../utils/messageSender";
+import { sendDecryptedMessage } from "../utils/sender";
 import {
   decryptPayload,
   encryptedPayload,
@@ -32,7 +33,7 @@ import { checkRateLimit, convertToPersianNumbers } from "../utils/tools";
 
 /**
  * Handles the /start command to initiate or continue a user's interaction with the bot.
- * It generates a unique UUID for new users and continues the interaction for existing users.
+ * Generates a unique UUID for new users and continues the interaction for existing users.
  *
  * @param {Context} ctx - The context of the current Telegram update.
  * @param {KVModel<User>} userModel - KVModel instance for managing user data.
@@ -59,9 +60,10 @@ export const handleStartCommand = async (
           userUUID: currentUserUUID,
           userName: ctx.from?.first_name ?? "بدون نام!",
           blockList: [],
+          lastMessage: Date.now(),
           currentConversation: {},
         });
-        await incrementStat(statsModel, "newUser"); // Increment the reply stat
+        await incrementStat(statsModel, "newUser");
       } else {
         currentUserUUID = currentUser.userUUID;
       }
@@ -84,11 +86,18 @@ export const handleStartCommand = async (
     const otherUserUUID = ctx.match;
     const otherUserId = await userUUIDtoId.get(otherUserUUID);
     const currentUser = await userModel.get(currentUserId.toString());
-    // check rate limit
+
+    // disable self message
+    if (otherUserId?.toString() === currentUserId.toString()) {
+      await ctx.reply(SELF_MESSAGE_DISABLE_MESSAGE);
+      return;
+    }
+    // Check rate limit
     if (checkRateLimit(currentUser.lastMessage)) {
       await ctx.reply(RATE_LIMIT_MESSAGE);
       return;
     }
+
     if (otherUserId) {
       const otherUser = await userModel.get(otherUserId);
 
@@ -242,13 +251,14 @@ export const handleMessage = async (
       "currentConversation",
       undefined
     );
-    // update rate limit
+
+    // Update rate limit
     await userModel.updateField(
       currentUserId.toString(),
       "lastMessage",
       Date.now()
     );
-    await incrementStat(statsModel, "newConversation"); // Increment the reply stat
+    await incrementStat(statsModel, "newConversation");
   } catch (error) {
     await ctx.reply(HuhMessage, {
       reply_markup: mainMenu,
@@ -261,11 +271,10 @@ export const handleMessage = async (
  *
  * @param {Context} ctx - The context of the current Telegram update.
  * @param {KVModel<User>} userModel - KVModel instance for managing user data.
- * @param {KVModel<string>} conversationModel - KVModel instance for managing conversation data.
+ * @param {KVModel<string>}  conversationModel - KVModel instance for managing conversation data.
  * @param {DurableObjectNamespace} inboxNamespace - Durable Object Namespace for inbox handling.
  * @param {string} APP_SECURE_KEY - The application-specific secure key.
  */
-
 export const handleInboxCommand = async (
   ctx: Context,
   userModel: KVModel<User>,
@@ -284,7 +293,7 @@ export const handleInboxCommand = async (
 
     const inbox: InboxMessage[] = await response.json();
     if (inbox.length > 0) {
-      for (const { ticketId, timestamp } of inbox) {
+      for (const { ticketId } of inbox) {
         try {
           const conversationId = getConversationId(ticketId, APP_SECURE_KEY);
           const conversationData = await conversationModel.get(conversationId);
