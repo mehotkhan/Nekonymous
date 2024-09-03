@@ -8,7 +8,7 @@
  * @template T - The type of object stored in this model, which extends a simple key-value pair record.
  */
 export class KVModel<T extends Record<string, any>> {
-  private namespace: string;
+  public namespace: string;
   private kv: KVNamespace;
 
   /**
@@ -133,5 +133,32 @@ export class KVModel<T extends Record<string, any>> {
     }
 
     await this.save(id, record);
+  }
+
+  /**
+   * Lists keys with an optional prefix and retrieves their associated values.
+   *
+   * @param {Object} options - Options for listing keys.
+   * @param {string} [options.prefix] - The prefix to filter keys by.
+   * @returns {Promise<{keys: {name: string}[], values: T[]}>} - A promise that resolves to an object containing the keys and their values.
+   */
+  async list(
+    options: { prefix?: string } = {}
+  ): Promise<{ keys: { name: string }[]; values: T[] }> {
+    const keys = await this.kv.list({
+      prefix: options.prefix
+        ? `${this.namespace}:${options.prefix}`
+        : `${this.namespace}:`,
+    });
+
+    const values: T[] = [];
+    for (const key of keys.keys) {
+      const value = await this.get(key.name.split(":").pop()!); // Extract ID from namespaced key
+      if (value) {
+        values.push(value);
+      }
+    }
+
+    return { keys: keys.keys, values };
   }
 }

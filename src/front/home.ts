@@ -1,9 +1,10 @@
 import { Environment } from "../types";
 import { KVModel } from "../utils/kv-storage";
-import { convertToPersianNumbers } from "../utils/tools";
+import { getTotalStats } from "../utils/logs";
 
 export const HomePageContent = async (env: Environment) => {
   const statsModel = new KVModel<number>("stats", env.NekonymousKV);
+  const stats = await getTotalStats(statsModel);
 
   // GitHub repository information
   const githubOwner = "mehotkhan";
@@ -14,17 +15,6 @@ export const HomePageContent = async (env: Environment) => {
   let commitDate = "N/A";
   let commitMessage = "N/A";
   let commitUrl = githubUrl;
-  let conversationsCount = "";
-  let usersCount = "";
-
-  const today = new Date().toISOString().split("T")[0];
-
-  conversationsCount = convertToPersianNumbers(
-    (await statsModel.get(`newConversation:${today}`)) || 0
-  );
-  usersCount = convertToPersianNumbers(
-    (await statsModel.get(`newUser:${today}`)) || 0
-  );
 
   // Fetch the latest commit from GitHub
   const commitInfo = await fetch(
@@ -38,7 +28,7 @@ export const HomePageContent = async (env: Environment) => {
   );
 
   if (commitInfo.ok) {
-    const commitData = await commitInfo.json();
+    const commitData: any = await commitInfo.json();
     commitHash = commitData.sha.substring(0, 7); // Shortened commit hash
     commitDate = new Date(commitData.commit.author.date).toLocaleDateString();
     commitMessage = commitData.commit.message.split("\n")[0]; // Extract first line of commit message
@@ -55,13 +45,13 @@ export const HomePageContent = async (env: Environment) => {
         <div class="bg-blue-100 p-6 rounded-lg shadow-lg text-center">
           <h2 class="text-xl font-bold text-blue-700 mb-2">کاربران</h2>
           <p   class="text-lg text-blue-600">
-            ${usersCount}
+            ${stats.usersCount}
           </p>
         </div>
         <div class="bg-green-100 p-6 rounded-lg shadow-lg text-center">
           <h2 class="text-xl font-bold text-green-700 mb-2">تعداد مکالمات</h2>
           <p  class="text-lg text-green-600">
-           ${conversationsCount}
+           ${stats.conversationsCount}
           </p>
         </div>
       </div>
